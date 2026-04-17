@@ -2,6 +2,8 @@
 
 A mafia-themed idle/incremental game built with React, TypeScript, Vite, Tailwind CSS, and Zustand.
 
+🎮 **Play it live:** https://tibisoft.github.io/mafia-idler/
+
 ## Gameplay
 
 Build your criminal empire from the ground up:
