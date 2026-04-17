@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #0a0a0a;
+    color: #d4c9a8;
+    font-family: 'Georgia', serif;
+  }
+}
+
+@layer utilities {
+  .text-shadow-gold {
+    text-shadow: 0 0 10px rgba(201, 168, 76, 0.5);
+  }
+  .border-worn {
+    border-color: rgba(201, 168, 76, 0.3);
+  }
+}
