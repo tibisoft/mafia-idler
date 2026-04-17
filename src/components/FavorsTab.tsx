@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Modal, StyleSheet } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import { FAVORS } from '../data/gameData';
 import type { FavorType } from '../types/game';
 import { formatTime } from '../utils/format';
+import { Colors } from '../theme/colors';
 
 export function FavorsTab() {
   const { favorCooldowns, useFavor, crew } = useGameStore();
@@ -10,7 +12,6 @@ export function FavorsTab() {
   const [pendingFavor, setPendingFavor] = useState<FavorType | null>(null);
 
   const now = Date.now();
-
   const hasPinchedCrew = crew.some(c => c.isPinched);
 
   function handleFavorClick(favorType: FavorType) {
@@ -19,9 +20,7 @@ export function FavorsTab() {
   }
 
   function handleAccept() {
-    if (pendingFavor) {
-      useFavor(pendingFavor);
-    }
+    if (pendingFavor) useFavor(pendingFavor);
     setPhoneRinging(null);
     setPendingFavor(null);
   }
@@ -31,94 +30,158 @@ export function FavorsTab() {
     setPendingFavor(null);
   }
 
+  const pendingFavorData = pendingFavor ? FAVORS.find(f => f.type === pendingFavor) : null;
+
   return (
-    <div className="p-4 space-y-4">
-      <h2 className="text-mob-gold font-serif text-lg uppercase tracking-widest text-shadow-gold">
-        Favors
-      </h2>
-      <p className="text-mob-muted text-xs">Pull strings through your Consigliere. Each favor costs nothing — just your patience.</p>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.title}>Favors</Text>
+      <Text style={styles.subtitle}>Pull strings through your Consigliere. Each favor costs nothing — just your patience.</Text>
 
-      {phoneRinging && pendingFavor && (() => {
-        const favor = FAVORS.find(f => f.type === pendingFavor);
-        if (!favor) return null;
+      <Modal visible={!!phoneRinging && !!pendingFavorData} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.phoneIcon}>📞</Text>
+            <Text style={styles.callerLabel}>Consigliere Calling...</Text>
+            <Text style={styles.favorName}>{pendingFavorData?.name}</Text>
+            <Text style={styles.favorDesc}>"{pendingFavorData?.description}"</Text>
+            <Text style={styles.rewardDesc}>→ {pendingFavorData?.rewardDescription}</Text>
+            <View style={styles.modalBtns}>
+              <TouchableOpacity onPress={handleHangUp} style={styles.hangUpBtn}>
+                <Text style={styles.hangUpText}>Hang Up</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleAccept} style={styles.acceptBtn}>
+                <Text style={styles.acceptText}>Accept</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {FAVORS.map(favor => {
+        const lastUsed = favorCooldowns[favor.type];
+        const cooldownRemaining = lastUsed ? Math.max(0, favor.cooldown - (now - lastUsed)) : 0;
+        const isOnCooldown = cooldownRemaining > 0;
+        const isDisabled = isOnCooldown || (favor.type === 'the_bailout' && !hasPinchedCrew);
+
         return (
-          <div className="fixed inset-0 bg-black/80 flex items-end justify-center z-50 pb-8">
-            <div className="bg-mob-dark border border-mob-gold/40 rounded-xl p-6 max-w-sm w-full mx-4 text-center">
-              <div className="text-5xl mb-4 animate-bounce">📞</div>
-              <div className="text-mob-gold font-serif text-sm uppercase tracking-widest mb-1">Consigliere Calling...</div>
-              <div className="text-mob-text text-base font-bold mb-2">{favor.name}</div>
-              <div className="text-mob-muted text-xs mb-4 italic">"{favor.description}"</div>
-              <div className="text-green-400 text-sm mb-6 font-mono">→ {favor.rewardDescription}</div>
-              <div className="flex gap-3">
-                <button
-                  onClick={handleHangUp}
-                  className="flex-1 py-3 border border-red-800 text-red-400 rounded-lg text-sm hover:bg-red-900/30 transition-colors"
-                >
-                  Hang Up
-                </button>
-                <button
-                  onClick={handleAccept}
-                  className="flex-1 py-3 bg-mob-gold text-mob-black rounded-lg text-sm font-bold hover:bg-mob-gold-light transition-colors"
-                >
-                  Accept
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      <div className="space-y-3">
-        {FAVORS.map(favor => {
-          const lastUsed = favorCooldowns[favor.type];
-          const cooldownRemaining = lastUsed ? Math.max(0, favor.cooldown - (now - lastUsed)) : 0;
-          const isOnCooldown = cooldownRemaining > 0;
-          
-          const isDisabled = isOnCooldown || 
-            (favor.type === 'the_bailout' && !hasPinchedCrew);
-
-          return (
-            <div
-              key={favor.type}
-              className={`border rounded-lg p-3 transition-all ${
-                isDisabled ? 'border-mob-border opacity-60' : 'border-mob-gold/30 bg-mob-card hover:border-mob-gold/60'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1">
-                  <div className="text-mob-text text-sm font-bold font-serif">{favor.name}</div>
-                  <div className="text-mob-muted text-xs mt-0.5">{favor.description}</div>
-                  <div className="text-green-400 text-xs mt-1 font-mono">→ {favor.rewardDescription}</div>
-                  {favor.type === 'the_bailout' && !hasPinchedCrew && (
-                    <div className="text-mob-muted text-xs mt-1 italic">No one's pinched right now</div>
-                  )}
-                </div>
-                <div className="text-right">
-                  {isOnCooldown ? (
-                    <div className="text-mob-muted text-xs font-mono">{formatTime(cooldownRemaining)}</div>
-                  ) : (
-                    <button
-                      onClick={() => handleFavorClick(favor.type)}
-                      disabled={isDisabled}
-                      className={`text-xs px-3 py-1.5 rounded font-mono transition-all ${
-                        !isDisabled
-                          ? 'bg-mob-gold text-mob-black hover:bg-mob-gold-light font-bold'
-                          : 'bg-mob-border text-mob-muted cursor-not-allowed'
-                      }`}
-                    >
+          <View
+            key={favor.type}
+            style={[styles.favorCard, isDisabled ? styles.favorCardDisabled : styles.favorCardEnabled]}
+          >
+            <View style={styles.favorInner}>
+              <View style={styles.favorInfo}>
+                <Text style={styles.favorTitle}>{favor.name}</Text>
+                <Text style={styles.favorDescription}>{favor.description}</Text>
+                <Text style={styles.rewardText}>→ {favor.rewardDescription}</Text>
+                {favor.type === 'the_bailout' && !hasPinchedCrew && (
+                  <Text style={styles.noPinchedText}>No one's pinched right now</Text>
+                )}
+              </View>
+              <View>
+                {isOnCooldown ? (
+                  <Text style={styles.cooldownText}>{formatTime(cooldownRemaining)}</Text>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => handleFavorClick(favor.type)}
+                    disabled={isDisabled}
+                    style={[styles.callBtn, isDisabled ? styles.callBtnDisabled : styles.callBtnEnabled]}
+                  >
+                    <Text style={[styles.callBtnText, isDisabled ? styles.callBtnTextDisabled : styles.callBtnTextEnabled]}>
                       Call
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          </View>
+        );
+      })}
 
-      <div className="text-mob-muted text-xs text-center opacity-60 pt-2">
-        Favors are limited — cap of 5 per day. Choose wisely.
-      </div>
-    </div>
+      <Text style={styles.footer}>Favors are limited — cap of 5 per day. Choose wisely.</Text>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.black },
+  content: { padding: 16, gap: 12 },
+  title: {
+    color: Colors.gold,
+    fontSize: 18,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 3,
+    marginBottom: 4,
+  },
+  subtitle: { color: Colors.muted, fontSize: 11, marginBottom: 4 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingBottom: 32,
+  },
+  modalCard: {
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.gold + '66',
+    borderRadius: 12,
+    padding: 24,
+    width: '90%',
+    alignItems: 'center',
+  },
+  phoneIcon: { fontSize: 48, marginBottom: 12 },
+  callerLabel: {
+    color: Colors.gold,
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 4,
+  },
+  favorName: { color: Colors.text, fontSize: 15, fontWeight: 'bold', marginBottom: 8 },
+  favorDesc: { color: Colors.muted, fontSize: 12, fontStyle: 'italic', textAlign: 'center', marginBottom: 12 },
+  rewardDesc: { color: Colors.statusGreen, fontSize: 13, fontFamily: 'monospace', marginBottom: 20 },
+  modalBtns: { flexDirection: 'row', gap: 12, width: '100%' },
+  hangUpBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#991b1b',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  hangUpText: { color: '#f87171', fontSize: 13 },
+  acceptBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    backgroundColor: Colors.gold,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  acceptText: { color: Colors.black, fontSize: 13, fontWeight: 'bold' },
+  favorCard: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+  },
+  favorCardEnabled: { borderColor: Colors.gold + '4d', backgroundColor: Colors.card },
+  favorCardDisabled: { borderColor: Colors.border, opacity: 0.6 },
+  favorInner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  favorInfo: { flex: 1 },
+  favorTitle: { color: Colors.text, fontSize: 13, fontWeight: 'bold' },
+  favorDescription: { color: Colors.muted, fontSize: 11, marginTop: 2 },
+  rewardText: { color: Colors.statusGreen, fontSize: 11, fontFamily: 'monospace', marginTop: 4 },
+  noPinchedText: { color: Colors.muted, fontSize: 10, fontStyle: 'italic', marginTop: 4 },
+  cooldownText: { color: Colors.muted, fontSize: 11, fontFamily: 'monospace' },
+  callBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 4,
+  },
+  callBtnEnabled: { backgroundColor: Colors.gold },
+  callBtnDisabled: { backgroundColor: Colors.border },
+  callBtnText: { fontFamily: 'monospace', fontSize: 11 },
+  callBtnTextEnabled: { color: Colors.black, fontWeight: 'bold' },
+  callBtnTextDisabled: { color: Colors.muted },
+  footer: { color: Colors.muted, fontSize: 10, textAlign: 'center', opacity: 0.6, paddingVertical: 8 },
+});

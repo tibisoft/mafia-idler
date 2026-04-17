@@ -1,12 +1,13 @@
-
+import React from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import { formatCash } from '../utils/format';
 import { CREW_TEMPLATES, FALL_HEAT_THRESHOLD, FALL_MIN_CASH_EARNED } from '../data/gameData';
+import { Colors } from '../theme/colors';
 
 export function BooksTab() {
   const { upgrades, resources, purchaseUpgrade, crewCounts, neighborhoods, prestigeMultiplier, prestige, totalCashEarned, prestigeCount } = useGameStore();
 
-  // Calculate total income per second
   let totalCashPerSec = 0;
   let totalHeatPerSec = 0;
   for (const template of CREW_TEMPLATES) {
@@ -31,113 +32,195 @@ export function BooksTab() {
   const willEarnMultiplier = totalCashEarned >= FALL_MIN_CASH_EARNED;
 
   return (
-    <div className="p-4 space-y-4">
-      <h2 className="text-mob-gold font-serif text-lg uppercase tracking-widest text-shadow-gold">
-        The Books
-      </h2>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.title}>The Books</Text>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="bg-mob-card border border-mob-border rounded p-3">
-          <div className="text-mob-muted text-xs uppercase tracking-wider">Cash/sec</div>
-          <div className="text-green-400 font-mono text-base font-bold">{formatCash(totalCashPerSec)}/s</div>
-        </div>
-        <div className="bg-mob-card border border-mob-border rounded p-3">
-          <div className="text-mob-muted text-xs uppercase tracking-wider">Heat/sec</div>
-          <div className="text-orange-400 font-mono text-base font-bold">+{totalHeatPerSec.toFixed(4)}/s</div>
-        </div>
-        <div className="bg-mob-card border border-mob-border rounded p-3">
-          <div className="text-mob-muted text-xs uppercase tracking-wider">Total Earned</div>
-          <div className="text-mob-gold font-mono text-base font-bold">{formatCash(totalCashEarned)}</div>
-        </div>
-        <div className="bg-mob-card border border-mob-border rounded p-3">
-          <div className="text-mob-muted text-xs uppercase tracking-wider">Rep Mult</div>
-          <div className="text-yellow-400 font-mono text-base font-bold">×{prestigeMultiplier.toFixed(1)}</div>
-        </div>
-      </div>
+      <View style={styles.statsGrid}>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Cash/sec</Text>
+          <Text style={[styles.statValue, { color: Colors.statusGreen }]}>{formatCash(totalCashPerSec)}/s</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Heat/sec</Text>
+          <Text style={[styles.statValue, { color: Colors.statusOrange }]}>+{totalHeatPerSec.toFixed(4)}/s</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Total Earned</Text>
+          <Text style={[styles.statValue, { color: Colors.gold }]}>{formatCash(totalCashEarned)}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Rep Mult</Text>
+          <Text style={[styles.statValue, { color: Colors.statusYellow }]}>×{prestigeMultiplier.toFixed(1)}</Text>
+        </View>
+      </View>
 
-      {/* The Fall */}
-      <div className="border border-mob-red/50 rounded-lg p-3 bg-mob-red/10">
-        <div className="text-mob-text font-serif text-sm font-bold mb-1">⚖️ The Fall</div>
-        <div className="text-mob-muted text-xs mb-2">
-          Go down voluntarily. Do your time. Come back stronger with a higher reputation multiplier.
+      <View style={styles.fallBox}>
+        <Text style={styles.fallTitle}>⚖️ The Fall</Text>
+        <Text style={styles.fallDesc}>
+          Go down voluntarily. Do your time. Come back stronger with a higher reputation multiplier.{'\n'}
           Next run: ×{nextPrestigeMultiplier.toFixed(1)} multiplier
-        </div>
+        </Text>
         {!canTakeFall && (
-          <div className="text-mob-muted text-xs mb-2 italic">
+          <Text style={styles.fallWarningMuted}>
             Heat too low — you need at least {FALL_HEAT_THRESHOLD} heat before you can take the fall. ({resources.heat.toFixed(1)}/{FALL_HEAT_THRESHOLD})
-          </div>
+          </Text>
         )}
         {canTakeFall && !willEarnMultiplier && (
-          <div className="text-yellow-600 text-xs mb-2 italic">
+          <Text style={styles.fallWarningYellow}>
             ⚠️ You haven't earned enough yet — taking the fall now won't increase your multiplier.
-          </div>
+          </Text>
         )}
-        <button
-          onClick={prestige}
+        <TouchableOpacity
+          onPress={prestige}
           disabled={!canTakeFall}
-          className={`w-full text-sm py-2 rounded border font-serif tracking-wider transition-colors ${
-            canTakeFall
-              ? 'border-mob-red/60 text-mob-red hover:bg-mob-red/20'
-              : 'border-mob-border text-mob-muted cursor-not-allowed opacity-50'
-          }`}
+          style={[styles.fallBtn, !canTakeFall && styles.fallBtnDisabled]}
         >
-          Take The Fall
-        </button>
-      </div>
+          <Text style={[styles.fallBtnText, !canTakeFall && styles.fallBtnTextDisabled]}>Take The Fall</Text>
+        </TouchableOpacity>
+      </View>
 
-      {/* Upgrades */}
-      <div>
-        <h3 className="text-mob-gold/80 text-xs uppercase tracking-widest mb-2">Upgrades</h3>
-        <div className="space-y-2">
-          {availableUpgrades.map(upgrade => {
-            const canAfford = resources.cash >= upgrade.cashCost && resources.respect >= upgrade.respectCost;
-            const requiresMet = !upgrade.requires || upgrades.find(u => u.id === upgrade.requires)?.purchased;
+      <Text style={styles.sectionLabel}>Upgrades</Text>
 
-            return (
-              <div
-                key={upgrade.id}
-                className={`border rounded-lg p-3 transition-all ${
-                  !requiresMet ? 'opacity-40 border-mob-border' :
-                  canAfford ? 'border-mob-gold/30 bg-mob-card' : 'border-mob-border bg-mob-dark'
-                }`}
+      {availableUpgrades.map(upgrade => {
+        const canAfford = resources.cash >= upgrade.cashCost && resources.respect >= upgrade.respectCost;
+        const requiresMet = !upgrade.requires || upgrades.find(u => u.id === upgrade.requires)?.purchased;
+
+        return (
+          <View
+            key={upgrade.id}
+            style={[
+              styles.upgradeCard,
+              !requiresMet ? styles.upgradeCardLocked :
+              canAfford ? styles.upgradeCardAffordable : styles.upgradeCardDefault,
+            ]}
+          >
+            <View style={styles.upgradeInner}>
+              <View style={styles.upgradeInfo}>
+                <Text style={styles.upgradeName}>{upgrade.name}</Text>
+                <Text style={styles.upgradeDesc}>{upgrade.description}</Text>
+                {upgrade.requires && !requiresMet && (
+                  <Text style={styles.upgradeRequires}>
+                    Requires: {upgrades.find(u => u.id === upgrade.requires)?.name}
+                  </Text>
+                )}
+              </View>
+              <TouchableOpacity
+                onPress={() => purchaseUpgrade(upgrade.id)}
+                disabled={!canAfford || !requiresMet}
+                style={[
+                  styles.purchaseBtn,
+                  canAfford && requiresMet ? styles.purchaseBtnEnabled : styles.purchaseBtnDisabled,
+                ]}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    <div className="text-mob-text text-xs font-bold">{upgrade.name}</div>
-                    <div className="text-mob-muted text-xs mt-0.5">{upgrade.description}</div>
-                    {upgrade.requires && !requiresMet && (
-                      <div className="text-mob-muted text-xs mt-0.5 opacity-60">
-                        Requires: {upgrades.find(u => u.id === upgrade.requires)?.name}
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => purchaseUpgrade(upgrade.id)}
-                    disabled={!canAfford || !requiresMet}
-                    className={`text-xs px-2 py-1 rounded font-mono whitespace-nowrap transition-all ${
-                      canAfford && requiresMet
-                        ? 'bg-mob-gold text-mob-black hover:bg-mob-gold-light font-bold'
-                        : 'bg-mob-border text-mob-muted cursor-not-allowed'
-                    }`}
-                  >
-                    {formatCash(upgrade.cashCost)}
-                    {upgrade.respectCost > 0 && ` + ${upgrade.respectCost}⭐`}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-          {purchasedUpgrades.map(upgrade => (
-            <div key={upgrade.id} className="border border-mob-gold/20 rounded-lg p-2 opacity-60">
-              <div className="flex items-center gap-2">
-                <span className="text-mob-gold text-xs">✓</span>
-                <span className="text-mob-muted text-xs">{upgrade.name}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+                <Text style={[
+                  styles.purchaseBtnText,
+                  canAfford && requiresMet ? styles.purchaseBtnTextEnabled : styles.purchaseBtnTextDisabled,
+                ]}>
+                  {formatCash(upgrade.cashCost)}{upgrade.respectCost > 0 ? ` + ${upgrade.respectCost}⭐` : ''}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+      })}
+
+      {purchasedUpgrades.map(upgrade => (
+        <View key={upgrade.id} style={styles.purchasedCard}>
+          <Text style={styles.checkmark}>✓</Text>
+          <Text style={styles.purchasedName}>{upgrade.name}</Text>
+        </View>
+      ))}
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.black },
+  content: { padding: 16, gap: 12 },
+  title: {
+    color: Colors.gold,
+    fontSize: 18,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 3,
+    marginBottom: 4,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 4,
+    padding: 12,
+  },
+  statLabel: { color: Colors.muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 },
+  statValue: { fontFamily: 'monospace', fontSize: 14, fontWeight: 'bold', marginTop: 2 },
+  fallBox: {
+    borderWidth: 1,
+    borderColor: Colors.red + '80',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: Colors.red + '1a',
+  },
+  fallTitle: { color: Colors.text, fontSize: 13, fontWeight: 'bold', marginBottom: 4 },
+  fallDesc: { color: Colors.muted, fontSize: 11, marginBottom: 8 },
+  fallBtn: {
+    borderWidth: 1,
+    borderColor: Colors.redBright + '99',
+    borderRadius: 4,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  fallBtnText: { color: Colors.redBright, fontSize: 13, letterSpacing: 1 },
+  fallBtnDisabled: { borderColor: Colors.border, opacity: 0.5 },
+  fallBtnTextDisabled: { color: Colors.muted },
+  fallWarningMuted: { color: Colors.muted, fontSize: 11, fontStyle: 'italic', marginBottom: 8 },
+  fallWarningYellow: { color: Colors.amber, fontSize: 11, fontStyle: 'italic', marginBottom: 8 },
+  sectionLabel: {
+    color: Colors.gold + 'cc',
+    fontSize: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+  },
+  upgradeCard: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+  },
+  upgradeCardLocked: { opacity: 0.4, borderColor: Colors.border, backgroundColor: Colors.dark },
+  upgradeCardAffordable: { borderColor: Colors.gold + '4d', backgroundColor: Colors.card },
+  upgradeCardDefault: { borderColor: Colors.border, backgroundColor: Colors.dark },
+  upgradeInner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  upgradeInfo: { flex: 1 },
+  upgradeName: { color: Colors.text, fontSize: 12, fontWeight: 'bold' },
+  upgradeDesc: { color: Colors.muted, fontSize: 11, marginTop: 2 },
+  upgradeRequires: { color: Colors.muted, fontSize: 10, marginTop: 2, opacity: 0.6 },
+  purchaseBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  purchaseBtnEnabled: { backgroundColor: Colors.gold },
+  purchaseBtnDisabled: { backgroundColor: Colors.border },
+  purchaseBtnText: { fontFamily: 'monospace', fontSize: 11 },
+  purchaseBtnTextEnabled: { color: Colors.black, fontWeight: 'bold' },
+  purchaseBtnTextDisabled: { color: Colors.muted },
+  purchasedCard: {
+    borderWidth: 1,
+    borderColor: Colors.gold + '33',
+    borderRadius: 8,
+    padding: 8,
+    opacity: 0.6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  checkmark: { color: Colors.gold, fontSize: 11 },
+  purchasedName: { color: Colors.muted, fontSize: 11 },
+});

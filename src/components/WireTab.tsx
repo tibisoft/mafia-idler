@@ -1,5 +1,7 @@
-
+import React from 'react';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useGameStore } from '../store/gameStore';
+import { Colors } from '../theme/colors';
 
 export function WireTab() {
   const { notifications } = useGameStore();
@@ -12,35 +14,60 @@ export function WireTab() {
     return `${Math.floor(diff / 3600000)}h ago`;
   }
 
-  const typeColor = {
-    info: 'border-blue-800 text-blue-300',
-    warning: 'border-yellow-800 text-yellow-400',
-    danger: 'border-red-800 text-red-400',
-    success: 'border-green-800 text-green-400',
+  const typeTextColors: Record<string, string> = {
+    info: Colors.statusBlue,
+    warning: Colors.statusYellow,
+    danger: Colors.statusRed,
+    success: Colors.statusGreen,
   };
 
   return (
-    <div className="p-4 space-y-3">
-      <h2 className="text-mob-gold font-serif text-lg uppercase tracking-widest text-shadow-gold">
-        The Wire
-      </h2>
-      <p className="text-mob-muted text-xs">Intel from the streets</p>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.title}>The Wire</Text>
+      <Text style={styles.subtitle}>Intel from the streets</Text>
 
       {notifications.length === 0 ? (
-        <div className="text-mob-muted text-xs text-center py-8">Nothing to report... yet.</div>
+        <Text style={styles.empty}>Nothing to report... yet.</Text>
       ) : (
-        <div className="space-y-2">
-          {notifications.map(notif => (
-            <div
-              key={notif.id}
-              className={`border-l-2 pl-3 py-1 ${typeColor[notif.type]}`}
-            >
-              <div className="text-xs">{notif.message}</div>
-              <div className="text-mob-muted text-xs opacity-60">{timeAgo(notif.timestamp)}</div>
-            </div>
-          ))}
-        </div>
+        notifications.map(notif => (
+          <View
+            key={notif.id}
+            style={[styles.notifRow, { borderLeftColor: typeTextColors[notif.type] }]}
+          >
+            <Text style={[styles.notifMessage, { color: typeTextColors[notif.type] }]}>
+              {notif.message}
+            </Text>
+            <Text style={styles.notifTime}>{timeAgo(notif.timestamp)}</Text>
+          </View>
+        ))
       )}
-    </div>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.black },
+  content: { padding: 16, gap: 8 },
+  title: {
+    color: Colors.gold,
+    fontSize: 18,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 3,
+    marginBottom: 4,
+  },
+  subtitle: { color: Colors.muted, fontSize: 11, marginBottom: 4 },
+  empty: {
+    color: Colors.muted,
+    fontSize: 11,
+    textAlign: 'center',
+    paddingVertical: 32,
+  },
+  notifRow: {
+    borderLeftWidth: 2,
+    paddingLeft: 12,
+    paddingVertical: 4,
+  },
+  notifMessage: { fontSize: 12 },
+  notifTime: { color: Colors.muted, fontSize: 10, opacity: 0.6, marginTop: 2 },
+});

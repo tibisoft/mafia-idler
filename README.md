@@ -1,44 +1,42 @@
 # Mafia Idler
 
-A mafia-themed idle/incremental game built with React, TypeScript, Vite, Tailwind CSS, and Zustand.
-
-🎮 **Play it live:** https://tibisoft.github.io/mafia-idler/
+A mafia-themed idle/incremental game built with React Native and Expo.
 
 ## Gameplay
 
-Build your criminal empire from the ground up:
+Build your criminal empire from street corners to organized crime. Manage your crew, acquire territory, and keep your heat level under control.
 
-- **The Streets** — Acquire neighborhoods and upgrade rackets (numbers running, loan sharking, smuggling, gambling dens, protection)
-- **The Family** — Hire crew from Street Kids up to the Don (8 ranks), each generating passive income
-- **The Books** — Purchase upgrades, track stats, and trigger **The Fall** (prestige mechanic)
-- **The Wire** — Activity log showing all events, warnings, and notifications
-- **Favors** — Call your Consigliere for one-time boosts: tips, bribes, bail-outs, shipments, and more
-
-### Heat System
-Every racket and crew member generates **heat**. As heat rises you progress through tiers:
-- 🟦 Clean → 🟡 Street Cops → 🟠 Detectives → 🔴 FBI → 🆘 RICO
-
-At RICO levels, expect crew to get pinched and raids if you don't cool down in time. Spend **Dirt** to reduce heat.
-
-### Prestige — The Fall
-Voluntarily "take the fall" (go to prison) to reset with a permanent income multiplier. Each run grants a higher reputation bonus.
+- 🗺️ **The Streets** — Acquire neighborhoods and upgrade rackets
+- 👥 **The Family** — Hire crew members from street kids to the Don  
+- 📒 **The Books** — Track your stats and buy upgrades
+- 📡 **The Wire** — Monitor events and FBI activity
+- 📞 **Favors** — Call in favors through your Consigliere
 
 ## Tech Stack
 
-- **React + TypeScript** — UI and type safety
-- **Vite** — Build tool and dev server
-- **Tailwind CSS v3** — Styling with a custom mafia color palette
-- **Zustand** — State management with localStorage persistence
+- **React Native + Expo** — Cross-platform mobile app
+- **TypeScript** — Type safety
+- **Zustand** — State management with AsyncStorage persistence
+- **React Navigation** — Tab-based navigation
 
 ## Running Locally
 
 ```bash
 npm install
-npm run dev
+npm start
 ```
 
-Build for production:
+Then scan the QR code with the Expo Go app on your phone, or press `a` for Android emulator / `i` for iOS simulator.
+
+## Building
 
 ```bash
-npm run build
+# Install EAS CLI
+npm install -g eas-cli
+
+# Build for Android
+eas build --platform android
+
+# Build for iOS
+eas build --platform ios
 ```

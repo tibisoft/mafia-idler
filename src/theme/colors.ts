@@ -1,0 +1,21 @@
+export const Colors = {
+  black: '#0a0a0a',
+  dark: '#111111',
+  card: '#1a1a1a',
+  border: '#2a2a2a',
+  gold: '#c9a84c',
+  goldLight: '#e8c97a',
+  red: '#8b1a1a',
+  redBright: '#cc2222',
+  amber: '#b8860b',
+  blue: '#1a3a5c',
+  text: '#d4c9a8',
+  muted: '#7a7264',
+  // status colors (for UI feedback elements)
+  statusBlue: '#60a5fa',
+  statusYellow: '#facc15',
+  statusOrange: '#fb923c',
+  statusGreen: '#4ade80',
+  statusPurple: '#c084fc',
+  statusRed: '#f87171',
+};
