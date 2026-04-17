@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import { formatCash } from '../utils/format';
-import { CREW_TEMPLATES } from '../data/gameData';
+import { CREW_TEMPLATES, FALL_HEAT_THRESHOLD, FALL_MIN_CASH_EARNED } from '../data/gameData';
 import { Colors } from '../theme/colors';
 
 export function BooksTab() {
@@ -27,6 +27,9 @@ export function BooksTab() {
   const purchasedUpgrades = upgrades.filter(u => u.purchased);
   const availableUpgrades = upgrades.filter(u => !u.purchased);
   const nextPrestigeMultiplier = 1 + (prestigeCount + 1) * 0.5;
+
+  const canTakeFall = resources.heat >= FALL_HEAT_THRESHOLD;
+  const willEarnMultiplier = totalCashEarned >= FALL_MIN_CASH_EARNED;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -57,8 +60,22 @@ export function BooksTab() {
           Go down voluntarily. Do your time. Come back stronger with a higher reputation multiplier.{'\n'}
           Next run: ×{nextPrestigeMultiplier.toFixed(1)} multiplier
         </Text>
-        <TouchableOpacity onPress={prestige} style={styles.fallBtn}>
-          <Text style={styles.fallBtnText}>Take The Fall</Text>
+        {!canTakeFall && (
+          <Text style={styles.fallWarningMuted}>
+            Heat too low — you need at least {FALL_HEAT_THRESHOLD} heat before you can take the fall. ({resources.heat.toFixed(1)}/{FALL_HEAT_THRESHOLD})
+          </Text>
+        )}
+        {canTakeFall && !willEarnMultiplier && (
+          <Text style={styles.fallWarningYellow}>
+            ⚠️ You haven't earned enough yet — taking the fall now won't increase your multiplier.
+          </Text>
+        )}
+        <TouchableOpacity
+          onPress={prestige}
+          disabled={!canTakeFall}
+          style={[styles.fallBtn, !canTakeFall && styles.fallBtnDisabled]}
+        >
+          <Text style={[styles.fallBtnText, !canTakeFall && styles.fallBtnTextDisabled]}>Take The Fall</Text>
         </TouchableOpacity>
       </View>
 
@@ -161,6 +178,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   fallBtnText: { color: Colors.redBright, fontSize: 13, letterSpacing: 1 },
+  fallBtnDisabled: { borderColor: Colors.border, opacity: 0.5 },
+  fallBtnTextDisabled: { color: Colors.muted },
+  fallWarningMuted: { color: Colors.muted, fontSize: 11, fontStyle: 'italic', marginBottom: 8 },
+  fallWarningYellow: { color: Colors.amber, fontSize: 11, fontStyle: 'italic', marginBottom: 8 },
   sectionLabel: {
     color: Colors.gold + 'cc',
     fontSize: 10,

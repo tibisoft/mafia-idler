@@ -1,5 +1,8 @@
 import type { CrewMemberTemplate, Neighborhood, RacketType, Upgrade, Favor, FavorType } from '../types/game';
 
+export const FALL_HEAT_THRESHOLD = 75;
+export const FALL_MIN_CASH_EARNED = 1000;
+
 export const CREW_TEMPLATES: CrewMemberTemplate[] = [
   {
     rank: 'street_kid',
