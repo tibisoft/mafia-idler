@@ -12,7 +12,7 @@ import { FallScreen } from './components/FallScreen';
 
 function App() {
   const { tick, activeTab, resources } = useGameStore();
-  const tickRef = useRef<number>(undefined);
+  const tickRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     tickRef.current = window.setInterval(tick, 100);
