@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   },
   purchaseBtnEnabled: { backgroundColor: Colors.gold },
   purchaseBtnDisabled: { backgroundColor: Colors.border },
-  purchaseBtnText: { fontFamily: 'monospace', fontSize: 11 } as any,
+  purchaseBtnText: { fontFamily: 'monospace', fontSize: 11 },
   purchaseBtnTextEnabled: { color: Colors.black, fontWeight: 'bold' },
   purchaseBtnTextDisabled: { color: Colors.muted },
   purchasedCard: {

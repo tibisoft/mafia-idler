@@ -25,7 +25,7 @@ export function HeatMeter() {
       </View>
 
       <View style={styles.barTrack}>
-        <View style={[styles.barFill, { width: `${heat}%` as any, backgroundColor: barColor }]} />
+        <View style={[styles.barFill, { width: `${heat}%`, backgroundColor: barColor }]} />
       </View>
 
       {raidWarningActive && (

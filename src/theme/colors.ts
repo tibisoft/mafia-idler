@@ -8,7 +8,6 @@ export const Colors = {
   text: '#e8e0d0',
   muted: '#888888',
   red: '#cc2222',
-  
   // status colors
   blue: '#60a5fa',
   yellow: '#facc15',
