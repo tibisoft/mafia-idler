@@ -8,10 +8,10 @@ export function ResourceBar() {
   const { resources, prestigeCount, prestigeMultiplier } = useGameStore();
 
   const heatColor =
-    resources.heat < 20 ? Colors.blue :
-    resources.heat < 40 ? Colors.yellow :
-    resources.heat < 60 ? Colors.orange :
-    resources.heat < 80 ? Colors.redLight : Colors.red;
+    resources.heat < 20 ? Colors.statusBlue :
+    resources.heat < 40 ? Colors.statusYellow :
+    resources.heat < 60 ? Colors.statusOrange :
+    resources.heat < 80 ? Colors.statusRed : Colors.redBright;
 
   return (
     <View style={styles.container}>
@@ -26,15 +26,15 @@ export function ResourceBar() {
         </View>
         <View style={styles.item}>
           <Text style={styles.icon}>🤝</Text>
-          <Text style={[styles.value, { color: Colors.purple }]}>{formatNumber(resources.loyalty)}</Text>
+          <Text style={[styles.value, { color: Colors.statusPurple }]}>{formatNumber(resources.loyalty)}</Text>
         </View>
         <View style={styles.item}>
           <Text style={styles.icon}>⭐</Text>
-          <Text style={[styles.value, { color: Colors.yellow }]}>{formatNumber(resources.respect)}</Text>
+          <Text style={[styles.value, { color: Colors.statusYellow }]}>{formatNumber(resources.respect)}</Text>
         </View>
         <View style={styles.item}>
           <Text style={styles.icon}>📁</Text>
-          <Text style={[styles.value, { color: Colors.green }]}>{formatNumber(resources.dirt)}</Text>
+          <Text style={[styles.value, { color: Colors.statusGreen }]}>{formatNumber(resources.dirt)}</Text>
         </View>
         {prestigeCount > 0 && (
           <View style={styles.item}>

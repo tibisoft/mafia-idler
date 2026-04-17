@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   pinchedName: { color: Colors.muted, fontSize: 11, textDecorationLine: 'line-through' },
-  pinchedTimer: { color: Colors.red, fontSize: 11 },
+  pinchedTimer: { color: Colors.redBright, fontSize: 11 },
   bailBtn: {
     backgroundColor: Colors.gold + '33',
     borderWidth: 1,
@@ -166,8 +166,8 @@ const styles = StyleSheet.create({
   countText: { color: Colors.muted, fontSize: 10, fontFamily: 'monospace' },
   cardAbility: { color: Colors.muted, fontSize: 11, marginTop: 2 },
   cardStats: { flexDirection: 'row', gap: 12, marginTop: 4 },
-  cashStat: { color: Colors.green, fontSize: 11, fontFamily: 'monospace' },
-  heatStat: { color: Colors.orange, fontSize: 11, fontFamily: 'monospace' },
+  cashStat: { color: Colors.statusGreen, fontSize: 11, fontFamily: 'monospace' },
+  heatStat: { color: Colors.statusOrange, fontSize: 11, fontFamily: 'monospace' },
   hireBtn: {
     marginLeft: 12,
     paddingHorizontal: 12,

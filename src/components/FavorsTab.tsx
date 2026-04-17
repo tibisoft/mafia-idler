@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   },
   favorName: { color: Colors.text, fontSize: 15, fontWeight: 'bold', marginBottom: 8 },
   favorDesc: { color: Colors.muted, fontSize: 12, fontStyle: 'italic', textAlign: 'center', marginBottom: 12 },
-  rewardDesc: { color: Colors.green, fontSize: 13, fontFamily: 'monospace', marginBottom: 20 },
+  rewardDesc: { color: Colors.statusGreen, fontSize: 13, fontFamily: 'monospace', marginBottom: 20 },
   modalBtns: { flexDirection: 'row', gap: 12, width: '100%' },
   hangUpBtn: {
     flex: 1,
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   favorInfo: { flex: 1 },
   favorTitle: { color: Colors.text, fontSize: 13, fontWeight: 'bold' },
   favorDescription: { color: Colors.muted, fontSize: 11, marginTop: 2 },
-  rewardText: { color: Colors.green, fontSize: 11, fontFamily: 'monospace', marginTop: 4 },
+  rewardText: { color: Colors.statusGreen, fontSize: 11, fontFamily: 'monospace', marginTop: 4 },
   noPinchedText: { color: Colors.muted, fontSize: 10, fontStyle: 'italic', marginTop: 4 },
   cooldownText: { color: Colors.muted, fontSize: 11, fontFamily: 'monospace' },
   callBtn: {

@@ -35,11 +35,11 @@ export function BooksTab() {
       <View style={styles.statsGrid}>
         <View style={styles.statCard}>
           <Text style={styles.statLabel}>Cash/sec</Text>
-          <Text style={[styles.statValue, { color: Colors.green }]}>{formatCash(totalCashPerSec)}/s</Text>
+          <Text style={[styles.statValue, { color: Colors.statusGreen }]}>{formatCash(totalCashPerSec)}/s</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statLabel}>Heat/sec</Text>
-          <Text style={[styles.statValue, { color: Colors.orange }]}>+{totalHeatPerSec.toFixed(4)}/s</Text>
+          <Text style={[styles.statValue, { color: Colors.statusOrange }]}>+{totalHeatPerSec.toFixed(4)}/s</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statLabel}>Total Earned</Text>
@@ -47,7 +47,7 @@ export function BooksTab() {
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statLabel}>Rep Mult</Text>
-          <Text style={[styles.statValue, { color: Colors.yellow }]}>×{prestigeMultiplier.toFixed(1)}</Text>
+          <Text style={[styles.statValue, { color: Colors.statusYellow }]}>×{prestigeMultiplier.toFixed(1)}</Text>
         </View>
       </View>
 
@@ -155,12 +155,12 @@ const styles = StyleSheet.create({
   fallDesc: { color: Colors.muted, fontSize: 11, marginBottom: 8 },
   fallBtn: {
     borderWidth: 1,
-    borderColor: Colors.red + '99',
+    borderColor: Colors.redBright + '99',
     borderRadius: 4,
     paddingVertical: 8,
     alignItems: 'center',
   },
-  fallBtnText: { color: Colors.red, fontSize: 13, letterSpacing: 1 },
+  fallBtnText: { color: Colors.redBright, fontSize: 13, letterSpacing: 1 },
   sectionLabel: {
     color: Colors.gold + 'cc',
     fontSize: 10,

@@ -15,10 +15,10 @@ export function WireTab() {
   }
 
   const typeTextColors: Record<string, string> = {
-    info: Colors.blue,
-    warning: Colors.yellow,
-    danger: Colors.redLight,
-    success: Colors.green,
+    info: Colors.statusBlue,
+    warning: Colors.statusYellow,
+    danger: Colors.statusRed,
+    success: Colors.statusGreen,
   };
 
   return (
