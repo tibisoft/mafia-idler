@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { GameState, CrewRank, FavorType, Tab, Notification } from '../types/game';
 import { CREW_TEMPLATES, INITIAL_NEIGHBORHOODS, UPGRADES, FAVORS, generateCrewName } from '../data/gameData';
 
@@ -517,6 +518,7 @@ export const useGameStore = create<GameStore>()(
     {
       name: 'mafia-idler-save',
       version: 1,
+      storage: createJSONStorage(() => AsyncStorage),
     }
   )
 );

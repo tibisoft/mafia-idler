@@ -1,80 +1,226 @@
-
+import React from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import { formatCash } from '../utils/format';
+import { Colors } from '../theme/colors';
 
 export function StreetsTab() {
   const { neighborhoods, resources, acquireTerritory, upgradeRacket } = useGameStore();
 
   return (
-    <div className="p-4 space-y-3">
-      <h2 className="text-mob-gold font-serif text-lg uppercase tracking-widest text-shadow-gold">
-        The Streets
-      </h2>
-      <p className="text-mob-muted text-xs">Your territory across the city</p>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.title}>The Streets</Text>
+      <Text style={styles.subtitle}>Your territory across the city</Text>
 
-      <div className="grid gap-3">
-        {neighborhoods.map(neighborhood => (
-          <div
-            key={neighborhood.id}
-            className={`border rounded-lg overflow-hidden transition-all ${
-              neighborhood.owned
-                ? 'border-mob-gold/40 bg-mob-card'
-                : 'border-mob-border bg-mob-dark opacity-80'
-            }`}
-          >
-            <div className="px-3 py-2 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${neighborhood.owned ? 'bg-mob-gold' : 'bg-mob-muted'}`} />
-                  <span className="font-serif text-sm font-bold text-mob-text">{neighborhood.name}</span>
-                </div>
-                {!neighborhood.owned && neighborhood.rivalFamily && (
-                  <div className="text-xs text-mob-muted mt-0.5">Held by: {neighborhood.rivalFamily}</div>
-                )}
-              </div>
-              {!neighborhood.owned && (
-                <button
-                  onClick={() => acquireTerritory(neighborhood.id)}
-                  disabled={resources.cash < (neighborhood.tributeCost || 0)}
-                  className={`text-xs px-3 py-1 rounded font-mono transition-all ${
-                    resources.cash >= (neighborhood.tributeCost || 0)
-                      ? 'bg-mob-gold text-mob-black hover:bg-mob-gold-light cursor-pointer'
-                      : 'bg-mob-border text-mob-muted cursor-not-allowed'
-                  }`}
-                >
-                  {formatCash(neighborhood.tributeCost || 0)} to Muscle In
-                </button>
+      {neighborhoods.map(neighborhood => (
+        <View
+          key={neighborhood.id}
+          style={[styles.card, neighborhood.owned ? styles.cardOwned : styles.cardUnowned]}
+        >
+          <View style={styles.cardHeader}>
+            <View>
+              <View style={styles.nameRow}>
+                <View style={[styles.dot, { backgroundColor: neighborhood.owned ? Colors.gold : Colors.muted }]} />
+                <Text style={styles.neighborhoodName}>{neighborhood.name}</Text>
+              </View>
+              {!neighborhood.owned && neighborhood.rivalFamily && (
+                <Text style={styles.rivalText}>Held by: {neighborhood.rivalFamily}</Text>
               )}
-            </div>
-
-            {neighborhood.owned && (
-              <div className="px-3 pb-3 space-y-2">
-                {neighborhood.rackets.map(racket => (
-                  <div key={racket.type} className="flex items-center justify-between bg-mob-black/40 rounded p-2">
-                    <div>
-                      <div className="text-xs font-mono text-mob-text">{racket.name}</div>
-                      <div className="text-xs text-mob-muted">
-                        Lvl {racket.level} · {formatCash(racket.cashPerSecond * racket.level)}/s · 🌡+{(racket.heatPerSecond * racket.level).toFixed(3)}/s
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => upgradeRacket(neighborhood.id, racket.type)}
-                      disabled={resources.cash < racket.upgradeCost}
-                      className={`text-xs px-2 py-1 rounded font-mono transition-all ${
-                        resources.cash >= racket.upgradeCost
-                          ? 'bg-mob-gold/20 text-mob-gold hover:bg-mob-gold/30 border border-mob-gold/30'
-                          : 'bg-mob-border/20 text-mob-muted border border-mob-border'
-                      }`}
-                    >
-                      ↑ {formatCash(racket.upgradeCost)}
-                    </button>
-                  </div>
-                ))}
-              </div>
+            </View>
+            {!neighborhood.owned && (
+              <TouchableOpacity
+                onPress={() => acquireTerritory(neighborhood.id)}
+                disabled={resources.cash < (neighborhood.tributeCost || 0)}
+                style={[
+                  styles.acquireBtn,
+                  resources.cash >= (neighborhood.tributeCost || 0)
+                    ? styles.acquireBtnEnabled
+                    : styles.acquireBtnDisabled,
+                ]}
+              >
+                <Text style={[
+                  styles.acquireBtnText,
+                  resources.cash >= (neighborhood.tributeCost || 0)
+                    ? styles.acquireBtnTextEnabled
+                    : styles.acquireBtnTextDisabled,
+                ]}>
+                  {formatCash(neighborhood.tributeCost || 0)} to Muscle In
+                </Text>
+              </TouchableOpacity>
             )}
-          </div>
-        ))}
-      </div>
-    </div>
+          </View>
+
+          {neighborhood.owned && (
+            <View style={styles.rackets}>
+              {neighborhood.rackets.map(racket => (
+                <View key={racket.type} style={styles.racketRow}>
+                  <View style={styles.racketInfo}>
+                    <Text style={styles.racketName}>{racket.name}</Text>
+                    <Text style={styles.racketStats}>
+                      Lvl {racket.level} · {formatCash(racket.cashPerSecond * racket.level)}/s · 🌡+{(racket.heatPerSecond * racket.level).toFixed(3)}/s
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => upgradeRacket(neighborhood.id, racket.type)}
+                    disabled={resources.cash < racket.upgradeCost}
+                    style={[
+                      styles.upgradeBtn,
+                      resources.cash >= racket.upgradeCost
+                        ? styles.upgradeBtnEnabled
+                        : styles.upgradeBtnDisabled,
+                    ]}
+                  >
+                    <Text style={[
+                      styles.upgradeBtnText,
+                      resources.cash >= racket.upgradeCost
+                        ? styles.upgradeBtnTextEnabled
+                        : styles.upgradeBtnTextDisabled,
+                    ]}>
+                      ↑ {formatCash(racket.upgradeCost)}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      ))}
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.black,
+  },
+  content: {
+    padding: 16,
+    gap: 12,
+  },
+  title: {
+    color: Colors.gold,
+    fontSize: 18,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 3,
+    marginBottom: 4,
+  },
+  subtitle: {
+    color: Colors.muted,
+    fontSize: 11,
+    marginBottom: 4,
+  },
+  card: {
+    borderWidth: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  cardOwned: {
+    borderColor: Colors.gold + '66',
+    backgroundColor: Colors.card,
+  },
+  cardUnowned: {
+    borderColor: Colors.border,
+    backgroundColor: Colors.dark,
+    opacity: 0.8,
+  },
+  cardHeader: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  neighborhoodName: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  rivalText: {
+    color: Colors.muted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  acquireBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  acquireBtnEnabled: {
+    backgroundColor: Colors.gold,
+  },
+  acquireBtnDisabled: {
+    backgroundColor: Colors.border,
+  },
+  acquireBtnText: {
+    fontSize: 11,
+    fontFamily: 'monospace',
+  },
+  acquireBtnTextEnabled: {
+    color: Colors.black,
+  },
+  acquireBtnTextDisabled: {
+    color: Colors.muted,
+  },
+  rackets: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  racketRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 4,
+    padding: 8,
+  },
+  racketInfo: {
+    flex: 1,
+  },
+  racketName: {
+    color: Colors.text,
+    fontSize: 11,
+    fontFamily: 'monospace',
+  },
+  racketStats: {
+    color: Colors.muted,
+    fontSize: 10,
+    marginTop: 2,
+  },
+  upgradeBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    borderWidth: 1,
+  },
+  upgradeBtnEnabled: {
+    backgroundColor: Colors.gold + '33',
+    borderColor: Colors.gold + '4d',
+  },
+  upgradeBtnDisabled: {
+    backgroundColor: Colors.border + '33',
+    borderColor: Colors.border,
+  },
+  upgradeBtnText: {
+    fontSize: 11,
+    fontFamily: 'monospace',
+  },
+  upgradeBtnTextEnabled: {
+    color: Colors.gold,
+  },
+  upgradeBtnTextDisabled: {
+    color: Colors.muted,
+  },
+});
