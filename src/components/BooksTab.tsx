@@ -1,7 +1,7 @@
 
 import { useGameStore } from '../store/gameStore';
 import { formatCash } from '../utils/format';
-import { CREW_TEMPLATES } from '../data/gameData';
+import { CREW_TEMPLATES, FALL_HEAT_THRESHOLD, FALL_MIN_CASH_EARNED } from '../data/gameData';
 
 export function BooksTab() {
   const { upgrades, resources, purchaseUpgrade, crewCounts, neighborhoods, prestigeMultiplier, prestige, totalCashEarned, prestigeCount } = useGameStore();
@@ -26,6 +26,9 @@ export function BooksTab() {
   const purchasedUpgrades = upgrades.filter(u => u.purchased);
   const availableUpgrades = upgrades.filter(u => !u.purchased);
   const nextPrestigeMultiplier = 1 + (prestigeCount + 1) * 0.5;
+
+  const canTakeFall = resources.heat >= FALL_HEAT_THRESHOLD;
+  const willEarnMultiplier = totalCashEarned >= FALL_MIN_CASH_EARNED;
 
   return (
     <div className="p-4 space-y-4">
@@ -60,9 +63,24 @@ export function BooksTab() {
           Go down voluntarily. Do your time. Come back stronger with a higher reputation multiplier.
           Next run: ×{nextPrestigeMultiplier.toFixed(1)} multiplier
         </div>
+        {!canTakeFall && (
+          <div className="text-mob-muted text-xs mb-2 italic">
+            Heat too low — you need at least {FALL_HEAT_THRESHOLD} heat before you can take the fall. ({resources.heat.toFixed(1)}/{FALL_HEAT_THRESHOLD})
+          </div>
+        )}
+        {canTakeFall && !willEarnMultiplier && (
+          <div className="text-yellow-600 text-xs mb-2 italic">
+            ⚠️ You haven't earned enough yet — taking the fall now won't increase your multiplier.
+          </div>
+        )}
         <button
           onClick={prestige}
-          className="w-full text-sm py-2 rounded border border-mob-red/60 text-mob-red hover:bg-mob-red/20 transition-colors font-serif tracking-wider"
+          disabled={!canTakeFall}
+          className={`w-full text-sm py-2 rounded border font-serif tracking-wider transition-colors ${
+            canTakeFall
+              ? 'border-mob-red/60 text-mob-red hover:bg-mob-red/20'
+              : 'border-mob-border text-mob-muted cursor-not-allowed opacity-50'
+          }`}
         >
           Take The Fall
         </button>

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { GameState, CrewRank, FavorType, Tab, Notification } from '../types/game';
-import { CREW_TEMPLATES, INITIAL_NEIGHBORHOODS, UPGRADES, FAVORS, generateCrewName } from '../data/gameData';
+import { CREW_TEMPLATES, INITIAL_NEIGHBORHOODS, UPGRADES, FAVORS, generateCrewName, FALL_HEAT_THRESHOLD, FALL_MIN_CASH_EARNED } from '../data/gameData';
 
 const INITIAL_STATE: GameState = {
   resources: {
@@ -82,10 +82,15 @@ export const useGameStore = create<GameStore>()(
         if (state.isFalling) {
           const newFallTimer = state.fallTimer - deltaMs;
           if (newFallTimer <= 0) {
-            // Complete prestige
-            const newPrestigeCount = state.prestigeCount + 1;
-            const newMultiplier = 1 + newPrestigeCount * 0.5;
-            get().addNotification(`You did your time. Back on the streets with a ${(newMultiplier * 100).toFixed(0)}% reputation multiplier.`, 'success');
+            // Only award a higher multiplier if the player actually earned meaningful income this run
+            const earnedMultiplier = state.totalCashEarned >= FALL_MIN_CASH_EARNED;
+            const newPrestigeCount = earnedMultiplier ? state.prestigeCount + 1 : state.prestigeCount;
+            const newMultiplier = earnedMultiplier ? 1 + newPrestigeCount * 0.5 : state.prestigeMultiplier;
+            if (earnedMultiplier) {
+              get().addNotification(`You did your time. Back on the streets with a ${(newMultiplier * 100).toFixed(0)}% reputation multiplier.`, 'success');
+            } else {
+              get().addNotification('You did your time, but you didn\'t earn enough to build a reputation. Back to square one.', 'warning');
+            }
             set({
               ...INITIAL_STATE,
               neighborhoods: INITIAL_NEIGHBORHOODS.map(n => ({ ...n, rackets: n.rackets.map(r => ({ ...r })) })),
@@ -485,7 +490,12 @@ export const useGameStore = create<GameStore>()(
       prestige: () => {
         const state = get();
         if (state.isFalling) return;
-        
+
+        if (state.resources.heat < FALL_HEAT_THRESHOLD) {
+          get().addNotification('The heat isn\'t high enough. You need at least 75 heat before you can take the fall.', 'warning');
+          return;
+        }
+
         get().addNotification('⚖️ The gavel falls. You\'re going inside. Time to do your time...', 'warning');
         set({
           isFalling: true,
