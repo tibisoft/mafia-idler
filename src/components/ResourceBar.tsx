@@ -5,7 +5,7 @@ import { formatCash, formatNumber } from '../utils/format';
 import { Colors } from '../theme/colors';
 
 export function ResourceBar() {
-  const { resources, prestigeCount, prestigeMultiplier } = useGameStore();
+  const { resources } = useGameStore();
 
   const heatColor =
     resources.heat < 20 ? Colors.statusBlue :
@@ -17,31 +17,25 @@ export function ResourceBar() {
     <View style={styles.container}>
       <View style={styles.row}>
         <View style={styles.item}>
-          <Text style={styles.icon}>💰</Text>
+          <Text style={styles.label}>CASH</Text>
           <Text style={[styles.value, { color: Colors.gold }]}>{formatCash(resources.cash)}</Text>
         </View>
         <View style={styles.item}>
-          <Text style={styles.icon}>🌡</Text>
+          <Text style={styles.label}>HEAT</Text>
           <Text style={[styles.value, { color: heatColor }]}>{resources.heat.toFixed(1)}%</Text>
         </View>
         <View style={styles.item}>
-          <Text style={styles.icon}>🤝</Text>
+          <Text style={styles.label}>LOY</Text>
           <Text style={[styles.value, { color: Colors.statusPurple }]}>{formatNumber(resources.loyalty)}</Text>
         </View>
         <View style={styles.item}>
-          <Text style={styles.icon}>⭐</Text>
+          <Text style={styles.label}>REP</Text>
           <Text style={[styles.value, { color: Colors.statusYellow }]}>{formatNumber(resources.respect)}</Text>
         </View>
         <View style={styles.item}>
-          <Text style={styles.icon}>📁</Text>
+          <Text style={styles.label}>DIRT</Text>
           <Text style={[styles.value, { color: Colors.statusGreen }]}>{formatNumber(resources.dirt)}</Text>
         </View>
-        {prestigeCount > 0 && (
-          <View style={styles.item}>
-            <Text style={[styles.value, { color: Colors.muted }]}>Run #{prestigeCount + 1}</Text>
-            <Text style={[styles.value, { color: Colors.gold }]}>×{prestigeMultiplier.toFixed(1)}</Text>
-          </View>
-        )}
       </View>
     </View>
   );
@@ -66,13 +60,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    minWidth: 90,
   },
-  icon: {
-    fontSize: 12,
+  label: {
+    color: Colors.muted,
+    fontSize: 10,
+    fontFamily: 'monospace',
+    letterSpacing: 0.5,
+    minWidth: 30,
   },
   value: {
     fontFamily: 'monospace',
     fontSize: 13,
     fontWeight: 'bold',
+    minWidth: 56,
   },
 });
