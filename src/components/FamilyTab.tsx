@@ -1,14 +1,15 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { useGameStore } from '../store/gameStore';
+import { useGameStore, BAIL_COST_PER_CREW } from '../store/gameStore';
 import { formatCash } from '../utils/format';
 import { CREW_TEMPLATES } from '../data/gameData';
 import type { CrewRank } from '../types/game';
 import { Colors } from '../theme/colors';
 
 export function FamilyTab() {
-  const { crewCounts, crew, resources, hireCrew, bailOutCrew } = useGameStore();
+  const { crewCounts, crew, resources, hireCrew, bailOutCrew, bailOutAllCrew } = useGameStore();
   const pinchedMembers = crew.filter(c => c.isPinched);
+  const totalBailCost = pinchedMembers.length * BAIL_COST_PER_CREW;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -16,7 +17,18 @@ export function FamilyTab() {
 
       {pinchedMembers.length > 0 && (
         <View style={styles.pinchedBox}>
-          <Text style={styles.pinchedHeader}>⚠️ Pinched</Text>
+          <View style={styles.pinchedHeaderRow}>
+            <Text style={styles.pinchedHeader}>⚠️ Pinched</Text>
+            {pinchedMembers.length >= 2 && (
+              <TouchableOpacity
+                onPress={() => bailOutAllCrew()}
+                disabled={resources.cash < totalBailCost}
+                style={[styles.bailAllBtn, resources.cash < totalBailCost && styles.bailBtnDisabled]}
+              >
+                <Text style={styles.bailBtnText}>Bail All {formatCash(totalBailCost)}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           {pinchedMembers.map(member => (
             <View key={member.id} style={styles.pinchedRow}>
               <View>
@@ -29,10 +41,10 @@ export function FamilyTab() {
               </View>
               <TouchableOpacity
                 onPress={() => bailOutCrew(member.id)}
-                disabled={resources.cash < 500}
-                style={[styles.bailBtn, resources.cash < 500 && styles.bailBtnDisabled]}
+                disabled={resources.cash < BAIL_COST_PER_CREW}
+                style={[styles.bailBtn, resources.cash < BAIL_COST_PER_CREW && styles.bailBtnDisabled]}
               >
-                <Text style={styles.bailBtnText}>Bail $500</Text>
+                <Text style={styles.bailBtnText}>Bail {formatCash(BAIL_COST_PER_CREW)}</Text>
               </TouchableOpacity>
             </View>
           ))}
@@ -113,12 +125,25 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(153,27,27,0.2)',
     padding: 12,
   },
+  pinchedHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   pinchedHeader: {
     color: '#f87171',
     fontSize: 10,
     textTransform: 'uppercase',
     letterSpacing: 2,
-    marginBottom: 8,
+  },
+  bailAllBtn: {
+    backgroundColor: Colors.gold + '33',
+    borderWidth: 1,
+    borderColor: Colors.gold + '4d',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   pinchedRow: {
     flexDirection: 'row',

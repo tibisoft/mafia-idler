@@ -11,6 +11,8 @@ const OFFLINE_EARNINGS_RATE = 0.5; // 50% income efficiency while offline
 const OFFLINE_RAID_HEAT_THRESHOLD = 30; // below this heat, no raid risk while offline
 const MAX_OFFLINE_RAID_CHANCE = 0.60; // up to 60% raid chance at max heat after 4+ hours
 
+export const BAIL_COST_PER_CREW = 500;
+
 const INITIAL_STATE: GameState = {
   resources: {
     cash: 10,
@@ -54,6 +56,7 @@ interface GameStore extends GameState {
   purchaseUpgrade: (upgradeId: string) => void;
   useFavor: (favorType: FavorType) => void;
   bailOutCrew: (crewId: string) => void;
+  bailOutAllCrew: () => void;
   setActiveTab: (tab: Tab) => void;
   prestige: () => void;
   spendDirt: (amount: number) => void;
@@ -521,19 +524,38 @@ export const useGameStore = create<GameStore>()(
         const member = state.crew.find(c => c.id === crewId);
         if (!member || !member.isPinched) return;
 
-        const bailCost = 500;
-        if (state.resources.cash < bailCost) {
+        if (state.resources.cash < BAIL_COST_PER_CREW) {
           get().addNotification('Not enough cash to post bail.', 'warning');
           return;
         }
 
         set(s => ({
-          resources: { ...s.resources, cash: s.resources.cash - bailCost },
+          resources: { ...s.resources, cash: s.resources.cash - BAIL_COST_PER_CREW },
           crew: s.crew.map(c =>
             c.id === crewId ? { ...c, isPinched: false, pinchedUntil: undefined } : c
           ),
         }));
-        get().addNotification(`${member.name} bailed out for $500.`, 'info');
+        get().addNotification(`${member.name} bailed out for $${BAIL_COST_PER_CREW}.`, 'info');
+      },
+
+      bailOutAllCrew: () => {
+        const state = get();
+        const pinchedMembers = state.crew.filter(c => c.isPinched);
+        if (pinchedMembers.length === 0) return;
+
+        const totalCost = BAIL_COST_PER_CREW * pinchedMembers.length;
+        if (state.resources.cash < totalCost) {
+          get().addNotification(`Not enough cash to bail everyone out. Need ${formatCash(totalCost)}.`, 'warning');
+          return;
+        }
+
+        set(s => ({
+          resources: { ...s.resources, cash: s.resources.cash - totalCost },
+          crew: s.crew.map(c =>
+            c.isPinched ? { ...c, isPinched: false, pinchedUntil: undefined } : c
+          ),
+        }));
+        get().addNotification(`All ${pinchedMembers.length} crew bailed out for ${formatCash(totalCost)}.`, 'info');
       },
 
       setActiveTab: (tab: Tab) => set({ activeTab: tab }),
