@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, StyleSheet } from 'react-native';
-import { InterstitialAd, AdEventType, TestIds } from 'react-native-google-mobile-ads';
+import { InterstitialAd, AdEventType, TestIds } from '../utils/ads';
+import type { InterstitialAdInstance } from '../utils/ads';
 import { useGameStore } from '../store/gameStore';
 import { FAVORS } from '../data/gameData';
 import type { FavorType } from '../types/game';
@@ -15,7 +16,7 @@ export function FavorsTab() {
   const [pendingFavor, setPendingFavor] = useState<FavorType | null>(null);
   const [adLoaded, setAdLoaded] = useState(false);
 
-  const interstitialAdRef = useRef<InterstitialAd | null>(null);
+  const interstitialAdRef = useRef<InterstitialAdInstance | null>(null);
   const pendingRewardRef = useRef<FavorType | null>(null);
   const useFavorRef = useRef(useFavor);
   useFavorRef.current = useFavor;
