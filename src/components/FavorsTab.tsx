@@ -1,15 +1,59 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, StyleSheet } from 'react-native';
+import { InterstitialAd, AdEventType, TestIds } from 'react-native-google-mobile-ads';
 import { useGameStore } from '../store/gameStore';
 import { FAVORS } from '../data/gameData';
 import type { FavorType } from '../types/game';
 import { formatTime } from '../utils/format';
 import { Colors } from '../theme/colors';
 
+const AD_UNIT_ID = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX';
+
 export function FavorsTab() {
   const { favorCooldowns, useFavor, crew } = useGameStore();
   const [phoneRinging, setPhoneRinging] = useState<FavorType | null>(null);
   const [pendingFavor, setPendingFavor] = useState<FavorType | null>(null);
+  const [adLoaded, setAdLoaded] = useState(false);
+
+  const interstitialAdRef = useRef<InterstitialAd | null>(null);
+  const pendingRewardRef = useRef<FavorType | null>(null);
+  const useFavorRef = useRef(useFavor);
+  useFavorRef.current = useFavor;
+
+  useEffect(() => {
+    const ad = InterstitialAd.createForAdRequest(AD_UNIT_ID);
+    interstitialAdRef.current = ad;
+
+    const unsubLoaded = ad.addAdEventListener(AdEventType.LOADED, () => {
+      setAdLoaded(true);
+    });
+
+    const unsubClosed = ad.addAdEventListener(AdEventType.CLOSED, () => {
+      setAdLoaded(false);
+      if (pendingRewardRef.current) {
+        useFavorRef.current(pendingRewardRef.current);
+        pendingRewardRef.current = null;
+      }
+      ad.load();
+    });
+
+    const unsubError = ad.addAdEventListener(AdEventType.ERROR, () => {
+      setAdLoaded(false);
+      if (pendingRewardRef.current) {
+        useFavorRef.current(pendingRewardRef.current);
+        pendingRewardRef.current = null;
+      }
+      ad.load();
+    });
+
+    ad.load();
+
+    return () => {
+      unsubLoaded();
+      unsubClosed();
+      unsubError();
+    };
+  }, []);
 
   const now = Date.now();
   const hasPinchedCrew = crew.some(c => c.isPinched);
@@ -20,9 +64,18 @@ export function FavorsTab() {
   }
 
   function handleAccept() {
-    if (pendingFavor) useFavor(pendingFavor);
+    if (!pendingFavor) {
+      setPhoneRinging(null);
+      return;
+    }
     setPhoneRinging(null);
     setPendingFavor(null);
+    if (adLoaded && interstitialAdRef.current) {
+      pendingRewardRef.current = pendingFavor;
+      interstitialAdRef.current.show();
+    } else {
+      useFavor(pendingFavor);
+    }
   }
 
   function handleHangUp() {
