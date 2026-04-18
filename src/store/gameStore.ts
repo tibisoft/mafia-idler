@@ -259,14 +259,15 @@ export const useGameStore = create<GameStore>()(
 
         // Offline raid check: when returning after an absence, heat may have drawn attention
         if (isOffline && !state.raidWarningActive) {
-          const heatFactor = Math.max(0, (state.resources.heat - OFFLINE_RAID_HEAT_THRESHOLD) / (100 - OFFLINE_RAID_HEAT_THRESHOLD));
+          const heatFactor = Math.max(0, (newHeat - OFFLINE_RAID_HEAT_THRESHOLD) / (100 - OFFLINE_RAID_HEAT_THRESHOLD));
           const offlineHoursFactor = Math.min(1, effectiveDeltaS / (4 * 3600)); // scales up over 4 hours
           const raidChance = heatFactor * offlineHoursFactor * MAX_OFFLINE_RAID_CHANCE;
           const offlineTimeStr = formatTime(effectiveDeltaS * 1000);
           if (Math.random() < raidChance) {
             const ricoProtection = state.upgrades.find(u => u.id === 'offshore_accounts' && u.purchased)
               ? 0.5 : 1;
-            get().addNotification(`🚨 While you were away (${offlineTimeStr}), the authorities raided your operation! Lost cash and crew pinched.`, 'danger');
+            const cashLost = newCash * ricoProtection;
+            get().addNotification(`🚨 While you were away (${offlineTimeStr}), the authorities raided your operation! Lost ${formatCash(cashLost)} and crew pinched.`, 'danger');
             set({
               resources: {
                 cash: newCash * (1 - ricoProtection),
