@@ -588,7 +588,9 @@ function calculateTotalIncome(state: GameState): number {
   for (const template of CREW_TEMPLATES) {
     const count = state.crewCounts[template.rank] || 0;
     if (count === 0) continue;
-    cashIncome += template.cashPerSecond * count;
+    const activeCrew = count - state.crew.filter(c => c.rank === template.rank && c.isPinched).length;
+    if (activeCrew <= 0) continue;
+    cashIncome += template.cashPerSecond * activeCrew;
   }
   for (const neighborhood of state.neighborhoods) {
     if (!neighborhood.owned) continue;

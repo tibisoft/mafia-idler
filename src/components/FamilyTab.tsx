@@ -41,6 +41,7 @@ export function FamilyTab() {
 
       {CREW_TEMPLATES.map(template => {
         const count = crewCounts[template.rank] || 0;
+        const activeCrew = count - crew.filter(c => c.rank === template.rank && c.isPinched).length;
         const canAfford = resources.cash >= template.cashCost && resources.loyalty >= template.loyaltyCost;
         const isUnlocked = resources.cash >= template.unlockCash || count > 0;
         const isMaxed = count >= template.maxCount;
@@ -65,9 +66,9 @@ export function FamilyTab() {
                 </View>
                 <Text style={styles.cardAbility}>{template.specialAbility}</Text>
                 <View style={styles.cardStats}>
-                  <Text style={styles.cashStat}>+{formatCash(template.cashPerSecond * count)}/s</Text>
+                  <Text style={styles.cashStat}>+{formatCash(template.cashPerSecond * activeCrew)}/s</Text>
                   {template.heatPerSecond > 0 && (
-                    <Text style={styles.heatStat}>🌡+{(template.heatPerSecond * count).toFixed(3)}/s</Text>
+                    <Text style={styles.heatStat}>🌡+{(template.heatPerSecond * activeCrew).toFixed(3)}/s</Text>
                   )}
                 </View>
               </View>
