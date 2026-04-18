@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { GameState, CrewRank, FavorType, Tab, Notification } from '../types/game';
-import { CREW_TEMPLATES, INITIAL_NEIGHBORHOODS, UPGRADES, FAVORS, generateCrewName, FALL_HEAT_THRESHOLD, FALL_MIN_CASH_EARNED } from '../data/gameData';
+import { CREW_TEMPLATES, INITIAL_NEIGHBORHOODS, UPGRADES, FAVORS, generateCrewName, FALL_HEAT_THRESHOLD, FALL_MIN_CASH_EARNED, getBailCost } from '../data/gameData';
 import { formatCash, formatTime } from '../utils/format';
 
 const OFFLINE_THRESHOLD_MS = 30 * 1000; // 30 seconds away is considered "offline"
@@ -11,7 +11,7 @@ const OFFLINE_EARNINGS_RATE = 0.5; // 50% income efficiency while offline
 const OFFLINE_RAID_HEAT_THRESHOLD = 30; // below this heat, no raid risk while offline
 const MAX_OFFLINE_RAID_CHANCE = 0.60; // up to 60% raid chance at max heat after 4+ hours
 
-export const BAIL_COST_PER_CREW = 500;
+export { getBailCost } from '../data/gameData';
 
 const INITIAL_STATE: GameState = {
   resources: {
@@ -524,18 +524,19 @@ export const useGameStore = create<GameStore>()(
         const member = state.crew.find(c => c.id === crewId);
         if (!member || !member.isPinched) return;
 
-        if (state.resources.cash < BAIL_COST_PER_CREW) {
+        const bailCost = getBailCost(member.rank);
+        if (state.resources.cash < bailCost) {
           get().addNotification('Not enough cash to post bail.', 'warning');
           return;
         }
 
         set(s => ({
-          resources: { ...s.resources, cash: s.resources.cash - BAIL_COST_PER_CREW },
+          resources: { ...s.resources, cash: s.resources.cash - bailCost },
           crew: s.crew.map(c =>
             c.id === crewId ? { ...c, isPinched: false, pinchedUntil: undefined } : c
           ),
         }));
-        get().addNotification(`${member.name} bailed out for $${BAIL_COST_PER_CREW}.`, 'info');
+        get().addNotification(`${member.name} bailed out for ${formatCash(bailCost)}.`, 'info');
       },
 
       bailOutAllCrew: () => {
@@ -543,7 +544,7 @@ export const useGameStore = create<GameStore>()(
         const pinchedMembers = state.crew.filter(c => c.isPinched);
         if (pinchedMembers.length === 0) return;
 
-        const totalCost = BAIL_COST_PER_CREW * pinchedMembers.length;
+        const totalCost = pinchedMembers.reduce((sum, m) => sum + getBailCost(m.rank), 0);
         if (state.resources.cash < totalCost) {
           get().addNotification(`Not enough cash to bail everyone out. Need ${formatCash(totalCost)}.`, 'warning');
           return;
