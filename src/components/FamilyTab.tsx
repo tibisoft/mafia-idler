@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { useGameStore, BAIL_COST_PER_CREW } from '../store/gameStore';
+import { useGameStore, getBailCost } from '../store/gameStore';
 import { formatCash } from '../utils/format';
 import { CREW_TEMPLATES } from '../data/gameData';
 import type { CrewRank } from '../types/game';
@@ -9,7 +9,7 @@ import { Colors } from '../theme/colors';
 export function FamilyTab() {
   const { crewCounts, crew, resources, hireCrew, bailOutCrew, bailOutAllCrew } = useGameStore();
   const pinchedMembers = crew.filter(c => c.isPinched);
-  const totalBailCost = pinchedMembers.length * BAIL_COST_PER_CREW;
+  const totalBailCost = pinchedMembers.reduce((sum, m) => sum + getBailCost(m.rank), 0);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -41,10 +41,10 @@ export function FamilyTab() {
               </View>
               <TouchableOpacity
                 onPress={() => bailOutCrew(member.id)}
-                disabled={resources.cash < BAIL_COST_PER_CREW}
-                style={[styles.bailBtn, resources.cash < BAIL_COST_PER_CREW && styles.bailBtnDisabled]}
+                disabled={resources.cash < getBailCost(member.rank)}
+                style={[styles.bailBtn, resources.cash < getBailCost(member.rank) && styles.bailBtnDisabled]}
               >
-                <Text style={styles.bailBtnText}>Bail {formatCash(BAIL_COST_PER_CREW)}</Text>
+                <Text style={styles.bailBtnText}>Bail {formatCash(getBailCost(member.rank))}</Text>
               </TouchableOpacity>
             </View>
           ))}

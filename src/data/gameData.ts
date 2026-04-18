@@ -1,7 +1,22 @@
-import type { CrewMemberTemplate, Neighborhood, RacketType, Upgrade, Favor, FavorType } from '../types/game';
+import type { CrewMemberTemplate, CrewRank, Neighborhood, RacketType, Upgrade, Favor, FavorType } from '../types/game';
 
 export const FALL_HEAT_THRESHOLD = 75;
 export const FALL_MIN_CASH_EARNED = 1000;
+
+export const BAIL_COSTS: Record<CrewRank, number> = {
+  street_kid: 50,
+  runner: 500,
+  enforcer: 2500,
+  soldier: 10000,
+  capo: 50000,
+  underboss: 250000,
+  consigliere: 1000000,
+  don: 5000000,
+};
+
+export function getBailCost(rank: CrewRank): number {
+  return BAIL_COSTS[rank];
+}
 
 export const CREW_TEMPLATES: CrewMemberTemplate[] = [
   {
