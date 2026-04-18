@@ -6,14 +6,17 @@ import { CREW_TEMPLATES, FALL_HEAT_THRESHOLD, FALL_MIN_CASH_EARNED } from '../da
 import { Colors } from '../theme/colors';
 
 export function BooksTab() {
-  const { upgrades, resources, purchaseUpgrade, crewCounts, neighborhoods, prestigeMultiplier, prestige, totalCashEarned, prestigeCount } = useGameStore();
+  const { upgrades, resources, purchaseUpgrade, crewCounts, crew, neighborhoods, prestigeMultiplier, prestige, totalCashEarned, prestigeCount } = useGameStore();
 
   let totalCashPerSec = 0;
   let totalHeatPerSec = 0;
   for (const template of CREW_TEMPLATES) {
     const count = crewCounts[template.rank] || 0;
-    totalCashPerSec += template.cashPerSecond * count;
-    totalHeatPerSec += template.heatPerSecond * count;
+    if (count === 0) continue;
+    const activeCrew = count - crew.filter(c => c.rank === template.rank && c.isPinched).length;
+    if (activeCrew <= 0) continue;
+    totalCashPerSec += template.cashPerSecond * activeCrew;
+    totalHeatPerSec += template.heatPerSecond * activeCrew;
   }
   for (const n of neighborhoods) {
     if (!n.owned) continue;
