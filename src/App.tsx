@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 import { useGameStore } from './store/gameStore';
 import { ResourceBar } from './components/ResourceBar';
 import { HeatMeter } from './components/HeatMeter';
@@ -47,31 +48,53 @@ function MainApp() {
             <Tab.Screen
               name="Streets"
               component={StreetsTab}
-              options={{ tabBarIcon: () => null, tabBarLabel: '🗺️ Streets' }}
+              options={{
+                tabBarLabel: 'Streets',
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="map-outline" size={size} color={color} />
+                ),
+              }}
             />
             <Tab.Screen
               name="Family"
               component={FamilyTab}
-              options={{ tabBarIcon: () => null, tabBarLabel: '👥 Family' }}
+              options={{
+                tabBarLabel: 'Family',
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="people-outline" size={size} color={color} />
+                ),
+              }}
             />
             <Tab.Screen
               name="Books"
               component={BooksTab}
-              options={{ tabBarIcon: () => null, tabBarLabel: '📒 Books' }}
+              options={{
+                tabBarLabel: 'Books',
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="book-outline" size={size} color={color} />
+                ),
+              }}
             />
             <Tab.Screen
               name="Wire"
               component={WireTab}
               options={{
-                tabBarIcon: () => null,
-                tabBarLabel: '📡 Wire',
+                tabBarLabel: 'Wire',
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="radio-outline" size={size} color={color} />
+                ),
                 tabBarBadge: newNotifCount > 0 ? newNotifCount : undefined,
               }}
             />
             <Tab.Screen
               name="Favors"
               component={FavorsTab}
-              options={{ tabBarIcon: () => null, tabBarLabel: '📞 Favors' }}
+              options={{
+                tabBarLabel: 'Favors',
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="call-outline" size={size} color={color} />
+                ),
+              }}
             />
           </Tab.Navigator>
         </NavigationContainer>
@@ -99,8 +122,9 @@ const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: Colors.dark,
     borderTopColor: Colors.border,
-    height: 60,
-    paddingBottom: 8,
+    height: Platform.OS === 'ios' ? 88 : 60,
+    paddingBottom: Platform.OS === 'ios' ? 30 : 8,
+    paddingTop: 6,
   },
   tabLabel: {
     fontSize: 10,
