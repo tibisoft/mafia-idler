@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, AppState, AppStateStatus } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -21,11 +21,25 @@ const Tab = createBottomTabNavigator();
 function MainApp() {
   const { tick, notifications } = useGameStore();
   const tickRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const newNotifCount = notifications.slice(0, 3).length;
 
   useEffect(() => {
     tickRef.current = setInterval(tick, 100);
     return () => clearInterval(tickRef.current);
+  }, [tick]);
+
+  // Fire an immediate tick when the app comes back to the foreground so that
+  // offline earnings (and the raid check) are resolved as soon as the player
+  // returns, rather than waiting for the next 100 ms interval.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      if (appStateRef.current !== 'active' && nextState === 'active') {
+        tick();
+      }
+      appStateRef.current = nextState;
+    });
+    return () => subscription.remove();
   }, [tick]);
 
   return (
