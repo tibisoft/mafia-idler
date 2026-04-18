@@ -3,6 +3,13 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { GameState, CrewRank, FavorType, Tab, Notification } from '../types/game';
 import { CREW_TEMPLATES, INITIAL_NEIGHBORHOODS, UPGRADES, FAVORS, generateCrewName, FALL_HEAT_THRESHOLD, FALL_MIN_CASH_EARNED } from '../data/gameData';
+import { formatCash, formatTime } from '../utils/format';
+
+const OFFLINE_THRESHOLD_MS = 30 * 1000; // 30 seconds away is considered "offline"
+const MAX_OFFLINE_SECONDS = 8 * 60 * 60; // cap offline earnings at 8 hours
+const OFFLINE_EARNINGS_RATE = 0.5; // 50% income efficiency while offline
+const OFFLINE_RAID_HEAT_THRESHOLD = 30; // below this heat, no raid risk while offline
+const MAX_OFFLINE_RAID_CHANCE = 0.60; // up to 60% raid chance at max heat after 4+ hours
 
 const INITIAL_STATE: GameState = {
   resources: {
@@ -78,6 +85,9 @@ export const useGameStore = create<GameStore>()(
         const deltaS = deltaMs / 1000;
 
         if (deltaS <= 0) return;
+
+        const isOffline = deltaMs > OFFLINE_THRESHOLD_MS;
+        const effectiveDeltaS = isOffline ? Math.min(deltaS, MAX_OFFLINE_SECONDS) : deltaS;
 
         // If in "The Fall" (prestige countdown), handle that
         if (state.isFalling) {
@@ -172,14 +182,15 @@ export const useGameStore = create<GameStore>()(
         // Heat decay (natural cooling)
         const heatDecay = 0.01 * heatDecayMult; // per second
         const currentHeat = state.resources.heat;
-        const newHeat = Math.max(0, Math.min(100, currentHeat + (heatIncome - heatDecay) * deltaS));
-        
-        const newCash = Math.max(0, state.resources.cash + cashIncome * deltaS);
-        const newLoyalty = Math.min(200, state.resources.loyalty + loyaltyIncome * deltaS);
-        const newRespect = state.resources.respect + respectIncome * deltaS;
-        const newDirt = Math.min(50, state.resources.dirt + 0.001 * deltaS);
+        const newHeat = Math.max(0, Math.min(100, currentHeat + (heatIncome - heatDecay) * effectiveDeltaS));
 
-        const cashEarned = cashIncome * deltaS;
+        const offlineEarningsRate = isOffline ? OFFLINE_EARNINGS_RATE : 1;
+        const newCash = Math.max(0, state.resources.cash + cashIncome * effectiveDeltaS * offlineEarningsRate);
+        const newLoyalty = Math.min(200, state.resources.loyalty + loyaltyIncome * effectiveDeltaS * offlineEarningsRate);
+        const newRespect = state.resources.respect + respectIncome * effectiveDeltaS * offlineEarningsRate;
+        const newDirt = Math.min(50, state.resources.dirt + 0.001 * effectiveDeltaS);
+
+        const cashEarned = cashIncome * effectiveDeltaS * offlineEarningsRate;
 
         // Check if any pinched crew should be released
         const updatedCrew = state.crew.map(member => {
@@ -193,8 +204,8 @@ export const useGameStore = create<GameStore>()(
         // Heat consequences
         let updatedCrewFinal = updatedCrew;
         
-        // FBI tier - chance to pinch crew member
-        if (newHeat >= 60 && Math.random() < 0.0002 * deltaS) {
+        // FBI tier - chance to pinch crew member (not during offline: handled by offline raid logic)
+        if (!isOffline && newHeat >= 60 && Math.random() < 0.0002 * effectiveDeltaS) {
           const activeCrew = updatedCrew.filter(c => !c.isPinched);
           if (activeCrew.length > 0) {
             const victim = activeCrew[Math.floor(Math.random() * activeCrew.length)];
@@ -208,11 +219,11 @@ export const useGameStore = create<GameStore>()(
           }
         }
 
-        // RICO warning
+        // RICO warning (not during offline: handled by offline raid logic)
         let raidWarningActive = state.raidWarningActive;
         let raidTimer = state.raidTimer;
         
-        if (newHeat >= 95 && !state.raidWarningActive) {
+        if (!isOffline && newHeat >= 95 && !state.raidWarningActive) {
           raidWarningActive = true;
           raidTimer = now + 60 * 1000; // 60 seconds
           get().addNotification('⚠️ RICO INVESTIGATION — You have 60 seconds! Spend Dirt to avoid a raid!', 'danger');
@@ -245,6 +256,45 @@ export const useGameStore = create<GameStore>()(
 
         // Clean up expired favors
         const activeFavors = state.activeFavors.filter(f => f.expiresAt > now);
+
+        // Offline raid check: when returning after an absence, heat may have drawn attention
+        if (isOffline && !state.raidWarningActive) {
+          const heatFactor = Math.max(0, (newHeat - OFFLINE_RAID_HEAT_THRESHOLD) / (100 - OFFLINE_RAID_HEAT_THRESHOLD));
+          const offlineHoursFactor = Math.min(1, effectiveDeltaS / (4 * 3600)); // scales up over 4 hours
+          const raidChance = heatFactor * offlineHoursFactor * MAX_OFFLINE_RAID_CHANCE;
+          const offlineTimeStr = formatTime(effectiveDeltaS * 1000);
+          if (Math.random() < raidChance) {
+            const ricoProtection = state.upgrades.find(u => u.id === 'offshore_accounts' && u.purchased)
+              ? 0.5 : 1;
+            const cashLost = newCash * ricoProtection;
+            get().addNotification(`🚨 While you were away (${offlineTimeStr}), the authorities raided your operation! Lost ${formatCash(cashLost)} and crew pinched.`, 'danger');
+            set({
+              resources: {
+                cash: newCash * (1 - ricoProtection),
+                heat: 40,
+                loyalty: Math.max(0, newLoyalty - 20),
+                respect: newRespect,
+                dirt: newDirt,
+              },
+              crew: updatedCrewFinal.map(c => ({
+                ...c,
+                isPinched: true,
+                pinchedUntil: now + 60 * 60 * 1000,
+              })),
+              activeFavors,
+              totalCashEarned: state.totalCashEarned + cashEarned,
+              lastTick: now,
+              raidWarningActive: false,
+              raidTimer: undefined,
+            });
+            return;
+          }
+          // No raid — notify the player of their offline earnings
+          get().addNotification(
+            `You were away for ${offlineTimeStr}. Your operation earned ${formatCash(cashEarned)} at ${Math.round(OFFLINE_EARNINGS_RATE * 100)}% efficiency.`,
+            'info',
+          );
+        }
 
         set({
           resources: {
