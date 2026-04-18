@@ -17,23 +17,23 @@ export function ResourceBar() {
     <View style={styles.container}>
       <View style={styles.row}>
         <View style={styles.item}>
-          <Text style={styles.label}>CASH</Text>
+          <Text style={styles.icon}>💵</Text>
           <Text style={[styles.value, { color: Colors.gold }]}>{formatCash(resources.cash)}</Text>
         </View>
         <View style={styles.item}>
-          <Text style={styles.label}>HEAT</Text>
+          <Text style={styles.icon}>🔥</Text>
           <Text style={[styles.value, { color: heatColor }]}>{resources.heat.toFixed(1)}%</Text>
         </View>
         <View style={styles.item}>
-          <Text style={styles.label}>LOY</Text>
+          <Text style={styles.icon}>🤝</Text>
           <Text style={[styles.value, { color: Colors.statusPurple }]}>{formatNumber(resources.loyalty)}</Text>
         </View>
         <View style={styles.item}>
-          <Text style={styles.label}>REP</Text>
+          <Text style={styles.icon}>👑</Text>
           <Text style={[styles.value, { color: Colors.statusYellow }]}>{formatNumber(resources.respect)}</Text>
         </View>
         <View style={styles.item}>
-          <Text style={styles.label}>DIRT</Text>
+          <Text style={styles.icon}>🗂️</Text>
           <Text style={[styles.value, { color: Colors.statusGreen }]}>{formatNumber(resources.dirt)}</Text>
         </View>
       </View>
@@ -62,12 +62,10 @@ const styles = StyleSheet.create({
     gap: 4,
     minWidth: 90,
   },
-  label: {
-    color: Colors.muted,
-    fontSize: 10,
-    fontFamily: 'monospace',
-    letterSpacing: 0.5,
-    minWidth: 30,
+  icon: {
+    fontSize: 14,
+    minWidth: 22,
+    textAlign: 'center',
   },
   value: {
     fontFamily: 'monospace',
