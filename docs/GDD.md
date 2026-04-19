@@ -40,9 +40,9 @@ Eight ranks unlock progressively as the player's total cash earned grows.
 | Enforcer | $500 | 5 | $2.00/s | 20 | $400 |
 | Soldier | $2,000 | 20 | $8.00/s | 15 | $1,500 |
 | Capo | $10,000 | 50 | $30.00/s | 8 | $7,500 |
-| Underboss | $50,000 | 100 | $100.00/s | 3 | $40,000 |
-| Consigliere | $200,000 | 200 | $300.00/s | 1 | $150,000 |
-| Don | $1,000,000 | 500 | $1,000.00/s | 1 | $750,000 |
+| Underboss | $200,000 | 100 | $100.00/s | 3 | $150,000 |
+| Consigliere | $1,500,000 | 200 | $300.00/s | 1 | $1,000,000 |
+| Don | $10,000,000 | 500 | $1,000.00/s | 1 | $8,000,000 |
 
 **Special abilities (mechanical):**
 - Consigliere: −20% heat generation from all sources
@@ -62,9 +62,9 @@ Five neighborhoods, one owned at start. Acquiring a territory costs a one-time t
 |-------------|-------|---------|---------|------------|
 | Little Italy | — (owned) | — | Numbers Running | — |
 | The Docks | Moretti Family | $500 | Smuggling | Crew pinched |
-| Midtown | Bianchi Crew | $2,000 | Gambling Den, Loan Sharking | Cash shakedown |
-| The Waterfront | Calabrese Outfit | $8,000 | Smuggling, Protection | Heat spike |
-| Uptown | Vitale Syndicate | $25,000 | Gambling Den, Loan Sharking, Numbers Running | Full retaliation |
+| Midtown | Bianchi Crew | $12,000 | Gambling Den, Loan Sharking | Cash shakedown |
+| The Waterfront | Calabrese Outfit | $100,000 | Smuggling, Protection | Heat spike |
+| Uptown | Vitale Syndicate | $1,000,000 | Gambling Den, Loan Sharking, Numbers Running | Full retaliation |
 
 **Rival retaliation:** 60–120 seconds after you take a territory, the displaced family strikes back:
 - `message_sent`: One active crew member pinched for 30 min
@@ -159,10 +159,10 @@ One-time purchases per run. Reset on prestige.
 | Street Network | $1,000 | Street Kid income +50% | — |
 | Crooked Cop on Payroll | $3,000 | Heat generation −15% | — |
 | Loyalty Oaths | $5,000 + 1 respect | Crew pinch rate −50% | Better Ledgers |
-| Judges in Your Pocket | $20,000 + 5 respect | Heat decay 2×, FBI threshold +10% | Crooked Cop |
-| Offshore Accounts | $100,000 + 10 respect | RICO takes only 50% cash | Judges |
-| Capo Network | $50,000 + 8 respect | Capo income 2× | — |
-| The Family Name | $250,000 + 25 respect | All income +50% | Capo Network |
+| Judges in Your Pocket | $75,000 + 5 respect | Heat decay 2×, FBI threshold +10% | Crooked Cop |
+| Offshore Accounts | $500,000 + 10 respect | RICO takes only 50% cash | Judges |
+| Capo Network | $150,000 + 8 respect | Capo income 2× | — |
+| The Family Name | $2,000,000 + 25 respect | All income +50% | Capo Network |
 
 ---
 
@@ -246,16 +246,17 @@ Claiming "The Commission" unlocks the "A Seat at the Table" prestige upgrade.
 Start run → hire Street Kids → earn cash
     → acquire The Docks ($500) → rival retaliates (crew pinched)
     → hire Enforcers (need 5 loyalty) → unlock Soldiers
-    → acquire Midtown ($2,000) → rival retaliates (shakedown)
+    → acquire Midtown ($12,000) → rival retaliates (shakedown)
     → buy Better Ledgers (+25% income)
     → heat climbs → need Crooked Cop to manage it
-    → acquire Waterfront + Uptown → heat accelerating
+    → acquire Waterfront ($100,000) → heat accelerating
     → buy Judges in Your Pocket (heat decay 2×)
-    → hire Capos, Underboss, Consigliere (−20% heat)
+    → hire Capos, Underboss ($200,000 each), Consigliere ($1,500,000)
     → heat still climbs to 75+ → take The Fall (prestige)
     → new run starts with 1.5× multiplier + 10 respect
     → buy Blood Money prestige upgrade (2× starting cash)
     → repeat faster, unlock Tier 2 objectives
+    → acquire Uptown ($1,000,000) → hire Don ($10,000,000)
     → prestige 5× + all territories + all upgrades → The Commission
 ```
 
@@ -268,8 +269,8 @@ FALL_HEAT_THRESHOLD     = 75
 FALL_MIN_CASH_EARNED    = 1,000
 
 OFFLINE_THRESHOLD_MS    = 30,000 ms
-MAX_OFFLINE_SECONDS     = 28,800 s (8 hours)
-OFFLINE_EARNINGS_RATE   = 0.5 (50%)
+MAX_OFFLINE_SECONDS     = 14,400 s (4 hours)
+OFFLINE_EARNINGS_RATE   = 0.25 (25%)
 OFFLINE_RAID_HEAT_THRESHOLD = 30%
 MAX_OFFLINE_RAID_CHANCE = 60%
 
