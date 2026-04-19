@@ -4,13 +4,12 @@ import { useGameStore } from '../store/gameStore';
 import { formatCash } from '../utils/format';
 import { CREW_TEMPLATES, FALL_HEAT_THRESHOLD, FALL_MIN_CASH_EARNED } from '../data/gameData';
 import { Colors } from '../theme/colors';
-import type { Objective } from '../types/game';
 
 export function BooksTab() {
   const {
     upgrades, resources, purchaseUpgrade, crewCounts, crew, neighborhoods,
     prestigeMultiplier, prestige, totalCashEarned, prestigeCount,
-    objectives, prestigeUpgrades, claimObjective, purchasePrestigeUpgrade, stats,
+    objectives, prestigeUpgrades, purchasePrestigeUpgrade,
   } = useGameStore();
 
   let totalCashPerSec = 0;
@@ -39,61 +38,9 @@ export function BooksTab() {
   const canTakeFall = resources.heat >= FALL_HEAT_THRESHOLD;
   const willEarnMultiplier = totalCashEarned >= FALL_MIN_CASH_EARNED;
 
-  // Objectives by tier
-  const tier1 = objectives.filter(o => o.tier === 1);
-  const tier2 = objectives.filter(o => o.tier === 2);
-  const tier3 = objectives.filter(o => o.tier === 3);
-  const tier1Done = tier1.filter(o => o.completed).length;
-  const tier2Done = tier2.filter(o => o.completed).length;
-  const showTier2 = tier1Done >= 3;
-  const showTier3 = tier2Done >= 4;
-
-  const pendingClaims = objectives.filter(o => o.completed && !o.claimed).length;
-
   // Prestige upgrades
   const availablePrestigeUpgrades = prestigeUpgrades.filter(u => !u.purchased);
   const purchasedPrestigeUpgrades = prestigeUpgrades.filter(u => u.purchased);
-
-  function renderObjective(obj: Objective) {
-    const claimable = obj.completed && !obj.claimed;
-    const done = obj.claimed;
-    const rewardStr = [
-      obj.reward.cash ? `+${formatCash(obj.reward.cash)}` : null,
-      obj.reward.respect ? `+${obj.reward.respect} rep` : null,
-      obj.reward.loyalty ? `+${obj.reward.loyalty} loyalty` : null,
-    ].filter(Boolean).join(', ');
-
-    return (
-      <View
-        key={obj.id}
-        style={[
-          styles.objectiveRow,
-          claimable && styles.objectiveClaimable,
-          done && styles.objectiveDone,
-        ]}
-      >
-        <Text style={[styles.objectiveIcon, done && styles.objectiveIconDone]}>
-          {done ? '✓' : obj.completed ? '●' : '○'}
-        </Text>
-        <View style={styles.objectiveBody}>
-          <Text style={[styles.objectiveTitle, done && styles.objectiveTitleDone]}>
-            {obj.title}
-          </Text>
-          {!done && (
-            <Text style={styles.objectiveDesc}>{obj.description}</Text>
-          )}
-        </View>
-        {claimable && (
-          <TouchableOpacity onPress={() => claimObjective(obj.id)} style={styles.claimBtn}>
-            <Text style={styles.claimBtnText}>{rewardStr}</Text>
-          </TouchableOpacity>
-        )}
-        {done && (
-          <Text style={styles.objectiveRewardDone}>{rewardStr}</Text>
-        )}
-      </View>
-    );
-  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -116,45 +63,6 @@ export function BooksTab() {
           <Text style={styles.statLabel}>Rep Mult</Text>
           <Text style={[styles.statValue, { color: Colors.statusYellow }]}>×{prestigeMultiplier.toFixed(1)}</Text>
         </View>
-      </View>
-
-      {/* Objectives */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionLabel}>Objectives</Text>
-        {pendingClaims > 0 && (
-          <View style={styles.claimBadge}>
-            <Text style={styles.claimBadgeText}>{pendingClaims} to claim</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.objectivesBox}>
-        <Text style={styles.chapterTitle}>Chapter I — The Neighbourhood</Text>
-        {tier1.map(renderObjective)}
-
-        {showTier2 && (
-          <>
-            <Text style={[styles.chapterTitle, styles.chapterTitleMid]}>Chapter II — The Family</Text>
-            {tier2.map(renderObjective)}
-          </>
-        )}
-        {!showTier2 && (
-          <Text style={styles.chapterLocked}>
-            Complete {3 - tier1Done} more Chapter I objective{3 - tier1Done !== 1 ? 's' : ''} to unlock Chapter II
-          </Text>
-        )}
-
-        {showTier3 && (
-          <>
-            <Text style={[styles.chapterTitle, styles.chapterTitleLate]}>Chapter III — The Commission</Text>
-            {tier3.map(renderObjective)}
-          </>
-        )}
-        {showTier2 && !showTier3 && (
-          <Text style={styles.chapterLocked}>
-            Complete {4 - tier2Done} more Chapter II objective{4 - tier2Done !== 1 ? 's' : ''} to unlock Chapter III
-          </Text>
-        )}
       </View>
 
       {/* The Fall */}
@@ -349,57 +257,6 @@ const styles = StyleSheet.create({
   },
   claimBadgeText: { color: Colors.black, fontSize: 9, fontWeight: 'bold' },
   respectBalance: { color: Colors.muted, fontSize: 10 },
-
-  objectivesBox: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: Colors.dark,
-    gap: 6,
-  },
-  chapterTitle: {
-    color: Colors.gold,
-    fontSize: 10,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4,
-    marginTop: 2,
-  },
-  chapterTitleMid: { color: Colors.amber, marginTop: 10 },
-  chapterTitleLate: { color: Colors.redBright, marginTop: 10 },
-  chapterLocked: { color: Colors.muted, fontSize: 10, fontStyle: 'italic', marginTop: 8 },
-
-  objectiveRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 4,
-  },
-  objectiveClaimable: {
-    borderWidth: 1,
-    borderColor: Colors.gold + '60',
-    borderRadius: 6,
-    padding: 6,
-    backgroundColor: Colors.gold + '0d',
-    marginVertical: 2,
-  },
-  objectiveDone: { opacity: 0.45 },
-  objectiveIcon: { color: Colors.muted, fontSize: 12, width: 14 },
-  objectiveIconDone: { color: Colors.gold },
-  objectiveBody: { flex: 1 },
-  objectiveTitle: { color: Colors.text, fontSize: 12 },
-  objectiveTitleDone: { color: Colors.muted },
-  objectiveDesc: { color: Colors.muted, fontSize: 10, marginTop: 1 },
-  claimBtn: {
-    backgroundColor: Colors.gold,
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  claimBtnText: { color: Colors.black, fontSize: 10, fontWeight: 'bold' },
-  objectiveRewardDone: { color: Colors.muted, fontSize: 10 },
 
   fallBox: {
     borderWidth: 1,

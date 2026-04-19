@@ -15,6 +15,7 @@ import { WireTab } from './components/WireTab';
 import { FavorsTab } from './components/FavorsTab';
 import { SettingsTab } from './components/SettingsTab';
 import { FallScreen } from './components/FallScreen';
+import { ObjectivesFAB } from './components/ObjectivesFAB';
 import { Colors } from './theme/colors';
 
 const Tab = createBottomTabNavigator();
@@ -115,6 +116,7 @@ function MainApp() {
             />
           </Tab.Navigator>
         </NavigationContainer>
+        <ObjectivesFAB />
       </View>
     </SafeAreaView>
   );
