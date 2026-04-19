@@ -125,12 +125,12 @@ export const CREW_TEMPLATES: CrewMemberTemplate[] = [
   },
 ];
 
-export const RACKET_DATA: Record<RacketType, { name: string; cashMult: number; heatMult: number; loyaltyMult: number }> = {
-  numbers_running: { name: 'Numbers Running', cashMult: 1.0, heatMult: 0.5, loyaltyMult: 0.3 },
-  loan_sharking: { name: 'Loan Sharking', cashMult: 1.5, heatMult: 0.8, loyaltyMult: 1.2 },
-  protection: { name: 'Protection Racket', cashMult: 1.2, heatMult: 0.7, loyaltyMult: 0.8 },
-  smuggling: { name: 'Smuggling', cashMult: 2.0, heatMult: 1.5, loyaltyMult: 0.5 },
-  gambling_den: { name: 'Gambling Den', cashMult: 1.8, heatMult: 1.2, loyaltyMult: 0.7 },
+export const RACKET_DATA: Record<RacketType, { name: string; cashMult: number; heatMult: number; loyaltyMult: number; streetKidsRequired: number }> = {
+  numbers_running: { name: 'Numbers Running', cashMult: 1.0, heatMult: 0.5, loyaltyMult: 0.3, streetKidsRequired: 2 },
+  loan_sharking: { name: 'Loan Sharking', cashMult: 1.5, heatMult: 0.8, loyaltyMult: 1.2, streetKidsRequired: 3 },
+  protection: { name: 'Protection Racket', cashMult: 1.2, heatMult: 0.7, loyaltyMult: 0.8, streetKidsRequired: 2 },
+  smuggling: { name: 'Smuggling', cashMult: 2.0, heatMult: 1.5, loyaltyMult: 0.5, streetKidsRequired: 4 },
+  gambling_den: { name: 'Gambling Den', cashMult: 1.8, heatMult: 1.2, loyaltyMult: 0.7, streetKidsRequired: 3 },
 };
 
 export const INITIAL_NEIGHBORHOODS: Neighborhood[] = [
@@ -139,7 +139,7 @@ export const INITIAL_NEIGHBORHOODS: Neighborhood[] = [
     name: 'Little Italy',
     owned: true,
     rackets: [
-      { type: 'numbers_running', name: 'Numbers Running', level: 1, cashPerSecond: 0.5, heatPerSecond: 0.005, loyaltyPerSecond: 0.002, upgradeCost: 50 },
+      { type: 'numbers_running', name: 'Numbers Running', level: 1, cashPerSecond: 0.5, heatPerSecond: 0.005, loyaltyPerSecond: 0.002, upgradeCost: 50, streetKidsRequired: 2 },
     ],
   },
   {
@@ -149,7 +149,7 @@ export const INITIAL_NEIGHBORHOODS: Neighborhood[] = [
     rivalFamily: 'Moretti Family',
     tributeCost: 500,
     rackets: [
-      { type: 'smuggling', name: 'Smuggling', level: 1, cashPerSecond: 3, heatPerSecond: 0.02, loyaltyPerSecond: 0.005, upgradeCost: 300 },
+      { type: 'smuggling', name: 'Smuggling', level: 1, cashPerSecond: 3, heatPerSecond: 0.02, loyaltyPerSecond: 0.005, upgradeCost: 300, streetKidsRequired: 4 },
     ],
   },
   {
@@ -159,8 +159,8 @@ export const INITIAL_NEIGHBORHOODS: Neighborhood[] = [
     rivalFamily: 'Bianchi Crew',
     tributeCost: 2000,
     rackets: [
-      { type: 'gambling_den', name: 'Gambling Den', level: 1, cashPerSecond: 5, heatPerSecond: 0.03, loyaltyPerSecond: 0.01, upgradeCost: 800 },
-      { type: 'loan_sharking', name: 'Loan Sharking', level: 1, cashPerSecond: 4, heatPerSecond: 0.015, loyaltyPerSecond: 0.015, upgradeCost: 600 },
+      { type: 'gambling_den', name: 'Gambling Den', level: 1, cashPerSecond: 5, heatPerSecond: 0.03, loyaltyPerSecond: 0.01, upgradeCost: 800, streetKidsRequired: 3 },
+      { type: 'loan_sharking', name: 'Loan Sharking', level: 1, cashPerSecond: 4, heatPerSecond: 0.015, loyaltyPerSecond: 0.015, upgradeCost: 600, streetKidsRequired: 3 },
     ],
   },
   {
@@ -170,8 +170,8 @@ export const INITIAL_NEIGHBORHOODS: Neighborhood[] = [
     rivalFamily: 'Calabrese Outfit',
     tributeCost: 8000,
     rackets: [
-      { type: 'smuggling', name: 'Smuggling', level: 1, cashPerSecond: 10, heatPerSecond: 0.05, loyaltyPerSecond: 0.01, upgradeCost: 2000 },
-      { type: 'protection', name: 'Protection Racket', level: 1, cashPerSecond: 8, heatPerSecond: 0.03, loyaltyPerSecond: 0.02, upgradeCost: 1500 },
+      { type: 'smuggling', name: 'Smuggling', level: 1, cashPerSecond: 10, heatPerSecond: 0.05, loyaltyPerSecond: 0.01, upgradeCost: 2000, streetKidsRequired: 4 },
+      { type: 'protection', name: 'Protection Racket', level: 1, cashPerSecond: 8, heatPerSecond: 0.03, loyaltyPerSecond: 0.02, upgradeCost: 1500, streetKidsRequired: 2 },
     ],
   },
   {
@@ -181,9 +181,9 @@ export const INITIAL_NEIGHBORHOODS: Neighborhood[] = [
     rivalFamily: 'Vitale Syndicate',
     tributeCost: 25000,
     rackets: [
-      { type: 'gambling_den', name: 'Gambling Den', level: 1, cashPerSecond: 20, heatPerSecond: 0.06, loyaltyPerSecond: 0.02, upgradeCost: 5000 },
-      { type: 'loan_sharking', name: 'Loan Sharking', level: 1, cashPerSecond: 15, heatPerSecond: 0.04, loyaltyPerSecond: 0.03, upgradeCost: 4000 },
-      { type: 'numbers_running', name: 'Numbers Running', level: 1, cashPerSecond: 12, heatPerSecond: 0.02, loyaltyPerSecond: 0.025, upgradeCost: 3000 },
+      { type: 'gambling_den', name: 'Gambling Den', level: 1, cashPerSecond: 20, heatPerSecond: 0.06, loyaltyPerSecond: 0.02, upgradeCost: 5000, streetKidsRequired: 3 },
+      { type: 'loan_sharking', name: 'Loan Sharking', level: 1, cashPerSecond: 15, heatPerSecond: 0.04, loyaltyPerSecond: 0.03, upgradeCost: 4000, streetKidsRequired: 3 },
+      { type: 'numbers_running', name: 'Numbers Running', level: 1, cashPerSecond: 12, heatPerSecond: 0.02, loyaltyPerSecond: 0.025, upgradeCost: 3000, streetKidsRequired: 2 },
     ],
   },
 ];

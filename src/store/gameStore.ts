@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { GameState, CrewRank, FavorType, Tab, Notification, ObjectiveRequirement } from '../types/game';
+import type { GameState, CrewRank, CrewMember, Neighborhood, FavorType, Tab, Notification, ObjectiveRequirement } from '../types/game';
 import { CREW_TEMPLATES, INITIAL_NEIGHBORHOODS, UPGRADES, FAVORS, OBJECTIVES, PRESTIGE_UPGRADES, generateCrewName, FALL_HEAT_THRESHOLD, FALL_MIN_CASH_EARNED, getBailCost } from '../data/gameData';
 import { formatCash, formatTime } from '../utils/format';
 
@@ -19,6 +19,26 @@ const RETALIATION_TYPES: Record<string, 'message_sent' | 'shakedown' | 'heat_up'
 };
 
 export { getBailCost } from '../data/gameData';
+
+/**
+ * Returns the fraction (0–1) of racket income that should be applied based on
+ * how many Street Kids are currently active vs. how many all owned rackets need.
+ * Defaults to 1 when no Street Kids have been hired yet (no investment in the mechanic).
+ */
+export function calculateRacketEfficiency(
+  crewCounts: Record<CrewRank, number>,
+  crew: CrewMember[],
+  neighborhoods: Neighborhood[],
+): number {
+  const totalStreetKids = crewCounts.street_kid || 0;
+  if (totalStreetKids === 0) return 1;
+  const activeStreetKids = Math.max(0, totalStreetKids - crew.filter(c => c.rank === 'street_kid' && c.isPinched).length);
+  const totalStreetKidsRequired = neighborhoods
+    .filter(n => n.owned)
+    .reduce((sum, n) => sum + n.rackets.reduce((s, r) => s + r.streetKidsRequired, 0), 0);
+  if (totalStreetKidsRequired === 0) return 1;
+  return Math.min(1, Math.max(0, activeStreetKids / totalStreetKidsRequired));
+}
 
 const INITIAL_STATE: GameState = {
   resources: {
@@ -222,11 +242,13 @@ export const useGameStore = create<GameStore>()(
           respectIncome += template.respectPerSecond * activeCrew;
         }
 
-        // Income from rackets (owned neighborhoods)
+        // Income from rackets (owned neighborhoods), scaled by street kid availability
+        const racketEfficiency = calculateRacketEfficiency(crewCounts, state.crew, state.neighborhoods);
+
         for (const neighborhood of state.neighborhoods) {
           if (!neighborhood.owned) continue;
           for (const racket of neighborhood.rackets) {
-            cashIncome += racket.cashPerSecond * racket.level;
+            cashIncome += racket.cashPerSecond * racket.level * racketEfficiency;
             heatIncome += racket.heatPerSecond * racket.level;
             loyaltyIncome += racket.loyaltyPerSecond * racket.level;
           }
@@ -958,10 +980,11 @@ function calculateTotalIncome(state: GameState): number {
     if (activeCrew <= 0) continue;
     cashIncome += template.cashPerSecond * activeCrew;
   }
+  const racketEfficiency = calculateRacketEfficiency(state.crewCounts, state.crew, state.neighborhoods);
   for (const neighborhood of state.neighborhoods) {
     if (!neighborhood.owned) continue;
     for (const racket of neighborhood.rackets) {
-      cashIncome += racket.cashPerSecond * racket.level;
+      cashIncome += racket.cashPerSecond * racket.level * racketEfficiency;
     }
   }
   return cashIncome * state.prestigeMultiplier;

@@ -1,16 +1,31 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { useGameStore } from '../store/gameStore';
+import { useGameStore, calculateRacketEfficiency } from '../store/gameStore';
 import { formatCash } from '../utils/format';
 import { Colors } from '../theme/colors';
 
 export function StreetsTab() {
-  const { neighborhoods, resources, acquireTerritory, upgradeRacket } = useGameStore();
+  const { neighborhoods, resources, crewCounts, crew, acquireTerritory, upgradeRacket } = useGameStore();
+
+  const totalStreetKidsRequired = neighborhoods
+    .filter(n => n.owned)
+    .reduce((sum, n) => sum + n.rackets.reduce((s, r) => s + r.streetKidsRequired, 0), 0);
+  const racketEfficiency = calculateRacketEfficiency(crewCounts, crew, neighborhoods);
+  const activeStreetKids = Math.max(0, (crewCounts.street_kid || 0) - crew.filter(c => c.rank === 'street_kid' && c.isPinched).length);
+  const efficiencyPct = Math.round(racketEfficiency * 100);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>The Streets</Text>
       <Text style={styles.subtitle}>Your territory across the city</Text>
+
+      {totalStreetKidsRequired > 0 && (
+        <View style={[styles.efficiencyBanner, racketEfficiency < 1 ? styles.efficiencyBannerWarn : styles.efficiencyBannerOk]}>
+          <Text style={styles.efficiencyLabel}>
+            Street Runners: {activeStreetKids}/{totalStreetKidsRequired} active · Racket efficiency: {efficiencyPct}%
+          </Text>
+        </View>
+      )}
 
       {neighborhoods.map(neighborhood => (
         <View
@@ -58,6 +73,9 @@ export function StreetsTab() {
                     <Text style={styles.racketName}>{racket.name}</Text>
                     <Text style={styles.racketStats}>
                       Lvl {racket.level} · {formatCash(racket.cashPerSecond * racket.level)}/s · 🌡+{(racket.heatPerSecond * racket.level).toFixed(3)}/s
+                    </Text>
+                    <Text style={styles.racketKids}>
+                      👦 Needs {racket.streetKidsRequired} street kids
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -199,6 +217,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginTop: 2,
   },
+  racketKids: {
+    color: Colors.muted,
+    fontSize: 10,
+    marginTop: 2,
+  },
   upgradeBtn: {
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -222,5 +245,25 @@ const styles = StyleSheet.create({
   },
   upgradeBtnTextDisabled: {
     color: Colors.muted,
+  },
+  efficiencyBanner: {
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 4,
+    borderWidth: 1,
+  },
+  efficiencyBannerOk: {
+    backgroundColor: Colors.gold + '1a',
+    borderColor: Colors.gold + '4d',
+  },
+  efficiencyBannerWarn: {
+    backgroundColor: '#8b1a1a33',
+    borderColor: '#cc222266',
+  },
+  efficiencyLabel: {
+    color: Colors.text,
+    fontSize: 11,
+    fontFamily: 'monospace',
   },
 });

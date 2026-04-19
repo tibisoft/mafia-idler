@@ -56,6 +56,7 @@ export interface Racket {
   heatPerSecond: number;
   loyaltyPerSecond: number;
   upgradeCost: number;
+  streetKidsRequired: number;
 }
 
 export interface Neighborhood {

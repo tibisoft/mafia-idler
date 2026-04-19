@@ -74,15 +74,21 @@ Five neighborhoods, one owned at start. Acquiring a territory costs a one-time t
 
 **Racket multipliers by type:**
 
-| Type | Cash mult | Heat mult | Loyalty mult |
-|------|-----------|----------|-------------|
-| Numbers Running | 1.0× | 0.5× | 0.3× |
-| Loan Sharking | 1.5× | 0.8× | 1.2× |
-| Protection | 1.2× | 0.7× | 0.8× |
-| Smuggling | 2.0× | 1.5× | 0.5× |
-| Gambling Den | 1.8× | 1.2× | 0.7× |
+| Type | Cash mult | Heat mult | Loyalty mult | Street Kids required |
+|------|-----------|----------|-------------|---------------------|
+| Numbers Running | 1.0× | 0.5× | 0.3× | 2 |
+| Loan Sharking | 1.5× | 0.8× | 1.2× | 3 |
+| Protection | 1.2× | 0.7× | 0.8× | 2 |
+| Smuggling | 2.0× | 1.5× | 0.5× | 4 |
+| Gambling Den | 1.8× | 1.2× | 0.7× | 3 |
 
 **Racket upgrades:** Each level costs 2.5× more than the last. Income grows 1.5×, heat 1.3×, loyalty 1.4× per level.
+
+**Street Kid dependency:** Each racket requires a fixed number of Street Kids to run at full capacity. Racket cash income is scaled by the ratio of currently-active (non-pinched) Street Kids to the total required across all owned rackets:
+
+> `racket efficiency = clamp(activeStreetKids / totalRequired, 0, 1)`
+
+If no Street Kids have ever been hired the efficiency defaults to 1 (rackets run independently). Once Street Kids are invested in, a raid that pins all of them will drop racket income to zero — making "The Fall" a more attractive exit.
 
 ---
 
