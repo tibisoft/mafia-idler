@@ -13,6 +13,7 @@ import { FamilyTab } from './components/FamilyTab';
 import { BooksTab } from './components/BooksTab';
 import { WireTab } from './components/WireTab';
 import { FavorsTab } from './components/FavorsTab';
+import { SettingsTab } from './components/SettingsTab';
 import { FallScreen } from './components/FallScreen';
 import { Colors } from './theme/colors';
 
@@ -22,6 +23,7 @@ function MainApp() {
   const { tick, notifications } = useGameStore();
   const tickRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const [settingsVisible, setSettingsVisible] = React.useState(false);
   const newNotifCount = notifications.slice(0, 3).length;
 
   useEffect(() => {
@@ -46,8 +48,9 @@ function MainApp() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="light" backgroundColor={Colors.black} />
       <FallScreen />
-      <ResourceBar />
+      <ResourceBar onSettingsPress={() => setSettingsVisible(true)} />
       <HeatMeter />
+      <SettingsTab visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
       <View style={styles.navContainer}>
         <NavigationContainer>
           <Tab.Navigator

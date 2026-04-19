@@ -1,10 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useGameStore } from '../store/gameStore';
 import { formatCash, formatNumber } from '../utils/format';
 import { Colors } from '../theme/colors';
 
-export function ResourceBar() {
+interface ResourceBarProps {
+  onSettingsPress: () => void;
+}
+
+export function ResourceBar({ onSettingsPress }: ResourceBarProps) {
   const { resources } = useGameStore();
 
   const heatColor =
@@ -36,6 +41,9 @@ export function ResourceBar() {
           <Text style={styles.icon}>🗂️</Text>
           <Text style={[styles.value, { color: Colors.statusGreen }]}>{formatNumber(resources.dirt)}</Text>
         </View>
+        <TouchableOpacity onPress={onSettingsPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name="settings-outline" size={18} color={Colors.muted} />
+        </TouchableOpacity>
       </View>
     </View>
   );

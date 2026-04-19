@@ -1,15 +1,22 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { GameState, CrewRank, FavorType, Tab, Notification } from '../types/game';
-import { CREW_TEMPLATES, INITIAL_NEIGHBORHOODS, UPGRADES, FAVORS, generateCrewName, FALL_HEAT_THRESHOLD, FALL_MIN_CASH_EARNED, getBailCost } from '../data/gameData';
+import type { GameState, CrewRank, FavorType, Tab, Notification, ObjectiveRequirement } from '../types/game';
+import { CREW_TEMPLATES, INITIAL_NEIGHBORHOODS, UPGRADES, FAVORS, OBJECTIVES, PRESTIGE_UPGRADES, generateCrewName, FALL_HEAT_THRESHOLD, FALL_MIN_CASH_EARNED, getBailCost } from '../data/gameData';
 import { formatCash, formatTime } from '../utils/format';
 
-const OFFLINE_THRESHOLD_MS = 30 * 1000; // 30 seconds away is considered "offline"
-const MAX_OFFLINE_SECONDS = 8 * 60 * 60; // cap offline earnings at 8 hours
-const OFFLINE_EARNINGS_RATE = 0.5; // 50% income efficiency while offline
-const OFFLINE_RAID_HEAT_THRESHOLD = 30; // below this heat, no raid risk while offline
-const MAX_OFFLINE_RAID_CHANCE = 0.60; // up to 60% raid chance at max heat after 4+ hours
+const OFFLINE_THRESHOLD_MS = 30 * 1000;
+const MAX_OFFLINE_SECONDS = 8 * 60 * 60;
+const OFFLINE_EARNINGS_RATE = 0.5;
+const OFFLINE_RAID_HEAT_THRESHOLD = 30;
+const MAX_OFFLINE_RAID_CHANCE = 0.60;
+
+const RETALIATION_TYPES: Record<string, 'message_sent' | 'shakedown' | 'heat_up' | 'full_retaliation'> = {
+  the_docks: 'message_sent',
+  midtown: 'shakedown',
+  the_waterfront: 'heat_up',
+  uptown: 'full_retaliation',
+};
 
 export { getBailCost } from '../data/gameData';
 
@@ -46,6 +53,14 @@ const INITIAL_STATE: GameState = {
   },
   totalCashEarned: 0,
   raidWarningActive: false,
+  objectives: OBJECTIVES.map(o => ({ ...o })),
+  prestigeUpgrades: PRESTIGE_UPGRADES.map(u => ({ ...u })),
+  pendingRetaliations: [],
+  stats: {
+    lifetimeCashEarned: 0,
+    raidsSurvived: 0,
+    highestHeat: 0,
+  },
 };
 
 interface GameStore extends GameState {
@@ -62,6 +77,40 @@ interface GameStore extends GameState {
   spendDirt: (amount: number) => void;
   addNotification: (message: string, type: Notification['type']) => void;
   dismissRaid: () => void;
+  claimObjective: (id: string) => void;
+  purchasePrestigeUpgrade: (id: string) => void;
+  resetGame: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  _checkObjectives: (ctx: any) => void;
+}
+
+function checkRequirement(req: ObjectiveRequirement, ctx: {
+  totalCashEarned: number;
+  lifetimeCashEarned: number;
+  crewCounts: Record<CrewRank, number>;
+  totalCrew: number;
+  territoriesOwned: number;
+  allTerritoriesOwned: boolean;
+  highestHeat: number;
+  raidsSurvived: number;
+  prestigeCount: number;
+  upgradesPurchased: number;
+  cashPerSec: number;
+}): boolean {
+  switch (req.type) {
+    case 'cashEarned': return ctx.totalCashEarned >= req.amount;
+    case 'lifetimeCash': return ctx.lifetimeCashEarned >= req.amount;
+    case 'crewRankHired': return (ctx.crewCounts[req.rank] || 0) > 0;
+    case 'totalCrew': return ctx.totalCrew >= req.count;
+    case 'territoriesOwned': return ctx.territoriesOwned >= req.count;
+    case 'allTerritoriesOwned': return ctx.allTerritoriesOwned;
+    case 'heatReached': return ctx.highestHeat >= req.heat;
+    case 'raidsSurvived': return ctx.raidsSurvived >= req.count;
+    case 'prestigeCount': return ctx.prestigeCount >= req.count;
+    case 'upgradesPurchased': return ctx.upgradesPurchased >= req.count;
+    case 'cashPerSec': return ctx.cashPerSec >= req.amount;
+    case 'compound': return req.all.every(r => checkRequirement(r, ctx));
+  }
 }
 
 export const useGameStore = create<GameStore>()(
@@ -92,11 +141,9 @@ export const useGameStore = create<GameStore>()(
         const isOffline = deltaMs > OFFLINE_THRESHOLD_MS;
         const effectiveDeltaS = isOffline ? Math.min(deltaS, MAX_OFFLINE_SECONDS) : deltaS;
 
-        // If in "The Fall" (prestige countdown), handle that
         if (state.isFalling) {
           const newFallTimer = state.fallTimer - deltaMs;
           if (newFallTimer <= 0) {
-            // Only award a higher multiplier if the player actually earned meaningful income this run
             const earnedMultiplier = state.totalCashEarned >= FALL_MIN_CASH_EARNED;
             const newPrestigeCount = earnedMultiplier ? state.prestigeCount + 1 : state.prestigeCount;
             const newMultiplier = earnedMultiplier ? 1 + newPrestigeCount * 0.5 : state.prestigeMultiplier;
@@ -105,16 +152,32 @@ export const useGameStore = create<GameStore>()(
             } else {
               get().addNotification('You did your time, but you didn\'t earn enough to build a reputation. Back to square one.', 'warning');
             }
+
+            // Calculate starting cash — base bonus × prestige upgrades multiplier
+            const startMultiplier = state.prestigeUpgrades
+              .filter(u => u.purchased && u.effect.startingCashMultiplier)
+              .reduce((acc, u) => acc * (u.effect.startingCashMultiplier ?? 1), 1);
+            const startingCash = 50 * newMultiplier * startMultiplier;
+
             set({
               ...INITIAL_STATE,
               neighborhoods: INITIAL_NEIGHBORHOODS.map(n => ({ ...n, rackets: n.rackets.map(r => ({ ...r })) })),
               upgrades: UPGRADES.map(u => ({ ...u })),
               prestigeCount: newPrestigeCount,
               prestigeMultiplier: newMultiplier,
-              resources: { cash: 50 * newMultiplier, heat: 0, loyalty: 0, respect: state.resources.respect + 10, dirt: 0 },
+              resources: { cash: startingCash, heat: 0, loyalty: 0, respect: state.resources.respect + 10, dirt: 0 },
               isFalling: false,
               fallTimer: 0,
               lastTick: now,
+              // Preserved across prestige
+              objectives: state.objectives,
+              prestigeUpgrades: state.prestigeUpgrades,
+              pendingRetaliations: [],
+              stats: {
+                lifetimeCashEarned: state.stats.lifetimeCashEarned,
+                raidsSurvived: state.stats.raidsSurvived,
+                highestHeat: 0,
+              },
             });
             return;
           }
@@ -137,12 +200,23 @@ export const useGameStore = create<GameStore>()(
         const loyaltyMultiplier = activeFavorTypes.includes('go_to_mattresses') ? 2 : 1;
         const heatFrozen = activeFavorTypes.includes('the_inside_man');
 
+        // Prestige upgrade bonuses
+        let prestigeCrewBonus = 0;
+        let prestigeGlobalCashMult = 0;
+        let prestigeHeatDecayBonus = 0;
+        for (const pu of state.prestigeUpgrades) {
+          if (!pu.purchased) continue;
+          if (pu.effect.crewIncomeBonus) prestigeCrewBonus += pu.effect.crewIncomeBonus;
+          if (pu.effect.globalCashMultiplier) prestigeGlobalCashMult += pu.effect.globalCashMultiplier;
+          if (pu.effect.heatDecayBonus) prestigeHeatDecayBonus += pu.effect.heatDecayBonus;
+        }
+
         for (const template of CREW_TEMPLATES) {
           const count = crewCounts[template.rank] || 0;
           if (count === 0) continue;
           const activeCrew = count - state.crew.filter(c => c.rank === template.rank && c.isPinched).length;
           if (activeCrew <= 0) continue;
-          cashIncome += template.cashPerSecond * activeCrew;
+          cashIncome += template.cashPerSecond * activeCrew * (1 + prestigeCrewBonus);
           heatIncome += template.heatPerSecond * activeCrew;
           loyaltyIncome += template.loyaltyPerSecond * activeCrew;
           respectIncome += template.respectPerSecond * activeCrew;
@@ -171,6 +245,9 @@ export const useGameStore = create<GameStore>()(
           if (upgrade.effect.globalMultiplier) globalCashMult += upgrade.effect.globalMultiplier;
         }
 
+        // Prestige upgrade global multiplier stacks on top
+        globalCashMult += prestigeGlobalCashMult;
+
         // Check consigliere heat bonus
         if (crewCounts.consigliere > 0) heatReduction += 0.2;
 
@@ -182,8 +259,8 @@ export const useGameStore = create<GameStore>()(
           heatIncome = 0;
         }
 
-        // Heat decay (natural cooling)
-        const heatDecay = 0.01 * heatDecayMult; // per second
+        // Heat decay (natural cooling + prestige bonus)
+        const heatDecay = (0.01 + prestigeHeatDecayBonus) * heatDecayMult;
         const currentHeat = state.resources.heat;
         const newHeat = Math.max(0, Math.min(100, currentHeat + (heatIncome - heatDecay) * effectiveDeltaS));
 
@@ -194,6 +271,10 @@ export const useGameStore = create<GameStore>()(
         const newDirt = Math.min(50, state.resources.dirt + 0.001 * effectiveDeltaS);
 
         const cashEarned = cashIncome * effectiveDeltaS * offlineEarningsRate;
+
+        // Update stats
+        const newHighestHeat = Math.max(state.stats.highestHeat, newHeat);
+        const newLifetimeCash = state.stats.lifetimeCashEarned + cashEarned;
 
         // Check if any pinched crew should be released
         const updatedCrew = state.crew.map(member => {
@@ -206,13 +287,12 @@ export const useGameStore = create<GameStore>()(
 
         // Heat consequences
         let updatedCrewFinal = updatedCrew;
-        
-        // FBI tier - chance to pinch crew member (not during offline: handled by offline raid logic)
+
         if (!isOffline && newHeat >= 60 && Math.random() < 0.0002 * effectiveDeltaS) {
           const activeCrew = updatedCrew.filter(c => !c.isPinched);
           if (activeCrew.length > 0) {
             const victim = activeCrew[Math.floor(Math.random() * activeCrew.length)];
-            const pinchedDuration = 30 * 60 * 1000 + Math.random() * 30 * 60 * 1000; // 30-60 min
+            const pinchedDuration = 30 * 60 * 1000 + Math.random() * 30 * 60 * 1000;
             updatedCrewFinal = updatedCrew.map(c =>
               c.id === victim.id
                 ? { ...c, isPinched: true, pinchedUntil: now + pinchedDuration }
@@ -222,22 +302,23 @@ export const useGameStore = create<GameStore>()(
           }
         }
 
-        // RICO warning (not during offline: handled by offline raid logic)
+        // RICO warning
         let raidWarningActive = state.raidWarningActive;
         let raidTimer = state.raidTimer;
-        
+
         if (!isOffline && newHeat >= 95 && !state.raidWarningActive) {
           raidWarningActive = true;
-          raidTimer = now + 60 * 1000; // 60 seconds
+          raidTimer = now + 60 * 1000;
           get().addNotification('⚠️ RICO INVESTIGATION — You have 60 seconds! Spend Dirt to avoid a raid!', 'danger');
         }
 
         // RICO raid hits
+        let newRaidsSurvived = state.stats.raidsSurvived;
         if (state.raidWarningActive && state.raidTimer && now >= state.raidTimer) {
-          // Raid! Lose half cash, all crew pinched
           const ricoProtection = state.upgrades.find(u => u.id === 'offshore_accounts' && u.purchased)
             ? 0.5 : 1;
           get().addNotification('🚨 RAID! The feds swept your operation. You lost cash and crew!', 'danger');
+          newRaidsSurvived += 1;
           set({
             resources: {
               ...state.resources,
@@ -253,23 +334,96 @@ export const useGameStore = create<GameStore>()(
             raidWarningActive: false,
             raidTimer: undefined,
             lastTick: now,
+            stats: { ...state.stats, raidsSurvived: newRaidsSurvived, highestHeat: newHighestHeat },
+          });
+          // Check objectives after raid (raidsSurvived incremented)
+          get()._checkObjectives({
+            totalCashEarned: state.totalCashEarned + cashEarned,
+            lifetimeCashEarned: newLifetimeCash,
+            crewCounts,
+            totalCrew: state.crew.length,
+            territoriesOwned: state.neighborhoods.filter(n => n.owned).length,
+            allTerritoriesOwned: state.neighborhoods.every(n => n.owned),
+            highestHeat: newHighestHeat,
+            raidsSurvived: newRaidsSurvived,
+            prestigeCount: state.prestigeCount,
+            upgradesPurchased: state.upgrades.filter(u => u.purchased).length,
+            cashPerSec: cashIncome,
           });
           return;
+        }
+
+        // Process pending retaliations
+        const now2 = now;
+        const dueRetaliations = state.pendingRetaliations.filter(r => r.executeAt <= now2);
+        let remainingRetaliations = state.pendingRetaliations.filter(r => r.executeAt > now2);
+        let retaliationCashHit = 0;
+        let retaliationHeatHit = 0;
+        let retaliationPinchedCrewId: string | undefined;
+
+        for (const retaliation of dueRetaliations) {
+          switch (retaliation.type) {
+            case 'message_sent': {
+              const active = updatedCrewFinal.filter(c => !c.isPinched);
+              if (active.length > 0) {
+                const victim = active[Math.floor(Math.random() * active.length)];
+                retaliationPinchedCrewId = victim.id;
+                get().addNotification(`The ${retaliation.rivalFamily} sent a message — ${victim.name} got roughed up and pinched for 30 minutes.`, 'danger');
+              } else {
+                get().addNotification(`The ${retaliation.rivalFamily} sent a message. They're watching your operation.`, 'warning');
+              }
+              break;
+            }
+            case 'shakedown': {
+              retaliationCashHit += Math.max(100, newCash * 0.10);
+              get().addNotification(`The ${retaliation.rivalFamily} shook down one of your spots. You lost ${formatCash(Math.max(100, newCash * 0.10))}.`, 'danger');
+              break;
+            }
+            case 'heat_up': {
+              retaliationHeatHit += 25;
+              get().addNotification(`The ${retaliation.rivalFamily} tipped off the cops. Heat +25%.`, 'danger');
+              break;
+            }
+            case 'full_retaliation': {
+              retaliationHeatHit += 20;
+              retaliationCashHit += Math.max(100, newCash * 0.05);
+              const active = updatedCrewFinal.filter(c => !c.isPinched);
+              if (active.length > 0) {
+                const victim = active[Math.floor(Math.random() * active.length)];
+                retaliationPinchedCrewId = victim.id;
+                get().addNotification(`The ${retaliation.rivalFamily} hit back hard — heat spiked and ${victim.name} got pinched.`, 'danger');
+              } else {
+                get().addNotification(`The ${retaliation.rivalFamily} hit back hard — heat spiked.`, 'danger');
+              }
+              break;
+            }
+          }
+        }
+
+        // Apply retaliation effects to crew if needed
+        if (retaliationPinchedCrewId) {
+          const pinchedDuration = 30 * 60 * 1000;
+          updatedCrewFinal = updatedCrewFinal.map(c =>
+            c.id === retaliationPinchedCrewId
+              ? { ...c, isPinched: true, pinchedUntil: now + pinchedDuration }
+              : c
+          );
         }
 
         // Clean up expired favors
         const activeFavors = state.activeFavors.filter(f => f.expiresAt > now);
 
-        // Offline raid check: when returning after an absence, heat may have drawn attention
+        // Offline raid check
         if (isOffline && !state.raidWarningActive) {
           const heatFactor = Math.max(0, (newHeat - OFFLINE_RAID_HEAT_THRESHOLD) / (100 - OFFLINE_RAID_HEAT_THRESHOLD));
-          const offlineHoursFactor = Math.min(1, effectiveDeltaS / (4 * 3600)); // scales up over 4 hours
+          const offlineHoursFactor = Math.min(1, effectiveDeltaS / (4 * 3600));
           const raidChance = heatFactor * offlineHoursFactor * MAX_OFFLINE_RAID_CHANCE;
           const offlineTimeStr = formatTime(effectiveDeltaS * 1000);
           if (Math.random() < raidChance) {
             const ricoProtection = state.upgrades.find(u => u.id === 'offshore_accounts' && u.purchased)
               ? 0.5 : 1;
             const cashLost = newCash * ricoProtection;
+            newRaidsSurvived += 1;
             get().addNotification(`🚨 While you were away (${offlineTimeStr}), the authorities raided your operation! Lost ${formatCash(cashLost)} and crew pinched.`, 'danger');
             set({
               resources: {
@@ -289,20 +443,25 @@ export const useGameStore = create<GameStore>()(
               lastTick: now,
               raidWarningActive: false,
               raidTimer: undefined,
+              pendingRetaliations: remainingRetaliations,
+              stats: { lifetimeCashEarned: newLifetimeCash, raidsSurvived: newRaidsSurvived, highestHeat: newHighestHeat },
             });
             return;
           }
-          // No raid — notify the player of their offline earnings
           get().addNotification(
             `You were away for ${offlineTimeStr}. Your operation earned ${formatCash(cashEarned)} at ${Math.round(OFFLINE_EARNINGS_RATE * 100)}% efficiency.`,
             'info',
           );
         }
 
+        // Apply retaliation adjustments to final resource values
+        const finalCash = Math.max(0, newCash - retaliationCashHit);
+        const finalHeat = Math.min(100, newHeat + retaliationHeatHit);
+
         set({
           resources: {
-            cash: newCash,
-            heat: newHeat,
+            cash: finalCash,
+            heat: finalHeat,
             loyalty: newLoyalty,
             respect: newRespect,
             dirt: newDirt,
@@ -313,7 +472,43 @@ export const useGameStore = create<GameStore>()(
           lastTick: now,
           raidWarningActive,
           raidTimer,
+          pendingRetaliations: remainingRetaliations,
+          stats: { lifetimeCashEarned: newLifetimeCash, raidsSurvived: newRaidsSurvived, highestHeat: newHighestHeat },
         });
+
+        // Check objectives with updated values
+        get()._checkObjectives({
+          totalCashEarned: state.totalCashEarned + cashEarned,
+          lifetimeCashEarned: newLifetimeCash,
+          crewCounts,
+          totalCrew: state.crew.length,
+          territoriesOwned: state.neighborhoods.filter(n => n.owned).length,
+          allTerritoriesOwned: state.neighborhoods.every(n => n.owned),
+          highestHeat: newHighestHeat,
+          raidsSurvived: newRaidsSurvived,
+          prestigeCount: state.prestigeCount,
+          upgradesPurchased: state.upgrades.filter(u => u.purchased).length,
+          cashPerSec: cashIncome,
+        });
+      },
+
+      // Internal — check and mark objectives complete; not part of public GameStore interface
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      _checkObjectives: (ctx: any) => {
+        const state = get();
+        let changed = false;
+        const updatedObjectives = state.objectives.map(obj => {
+          if (obj.completed) return obj;
+          if (checkRequirement(obj.requirement, ctx)) {
+            changed = true;
+            get().addNotification(`Objective complete: "${obj.title}" — ${obj.flavour}`, 'success');
+            return { ...obj, completed: true };
+          }
+          return obj;
+        });
+        if (changed) {
+          set({ objectives: updatedObjectives });
+        }
       },
 
       hireCrew: (rank: CrewRank) => {
@@ -360,6 +555,22 @@ export const useGameStore = create<GameStore>()(
         }));
 
         get().addNotification(`${name} "${nickname}" joined the family as a ${template.title}.`, 'success');
+
+        // Check crew-related objectives immediately
+        const s = get();
+        get()._checkObjectives({
+          totalCashEarned: s.totalCashEarned,
+          lifetimeCashEarned: s.stats.lifetimeCashEarned,
+          crewCounts: s.crewCounts,
+          totalCrew: s.crew.length,
+          territoriesOwned: s.neighborhoods.filter(n => n.owned).length,
+          allTerritoriesOwned: s.neighborhoods.every(n => n.owned),
+          highestHeat: s.stats.highestHeat,
+          raidsSurvived: s.stats.raidsSurvived,
+          prestigeCount: s.prestigeCount,
+          upgradesPurchased: s.upgrades.filter(u => u.purchased).length,
+          cashPerSec: 0,
+        });
       },
 
       upgradeRacket: (neighborhoodId: string, racketType: string) => {
@@ -416,6 +627,16 @@ export const useGameStore = create<GameStore>()(
         }
 
         const newHeat = Math.min(100, state.resources.heat + 10);
+
+        // Schedule rival retaliation
+        const retaliationType = RETALIATION_TYPES[neighborhoodId];
+        const newRetaliation = retaliationType ? [{
+          neighborhoodId,
+          rivalFamily: neighborhood.rivalFamily || 'Rival Family',
+          executeAt: Date.now() + (60 + Math.random() * 60) * 1000,
+          type: retaliationType,
+        }] : [];
+
         set(state => ({
           neighborhoods: state.neighborhoods.map(n =>
             n.id === neighborhoodId ? { ...n, owned: true, rivalFamily: undefined } : n
@@ -425,9 +646,29 @@ export const useGameStore = create<GameStore>()(
             cash: state.resources.cash - cost,
             heat: newHeat,
           },
+          pendingRetaliations: [...state.pendingRetaliations, ...newRetaliation],
         }));
 
         get().addNotification(`${neighborhood.name} is now under your control. The ${neighborhood.rivalFamily} won't be happy.`, 'success');
+        if (retaliationType) {
+          get().addNotification(`Expect retaliation from the ${neighborhood.rivalFamily} soon.`, 'warning');
+        }
+
+        // Check territory objectives
+        const s = get();
+        get()._checkObjectives({
+          totalCashEarned: s.totalCashEarned,
+          lifetimeCashEarned: s.stats.lifetimeCashEarned,
+          crewCounts: s.crewCounts,
+          totalCrew: s.crew.length,
+          territoriesOwned: s.neighborhoods.filter(n => n.owned).length,
+          allTerritoriesOwned: s.neighborhoods.every(n => n.owned),
+          highestHeat: s.stats.highestHeat,
+          raidsSurvived: s.stats.raidsSurvived,
+          prestigeCount: s.prestigeCount,
+          upgradesPurchased: s.upgrades.filter(u => u.purchased).length,
+          cashPerSec: 0,
+        });
       },
 
       purchaseUpgrade: (upgradeId: string) => {
@@ -465,6 +706,22 @@ export const useGameStore = create<GameStore>()(
         }));
 
         get().addNotification(`"${upgrade.name}" acquired.`, 'success');
+
+        // Check upgrade-related objectives
+        const s = get();
+        get()._checkObjectives({
+          totalCashEarned: s.totalCashEarned,
+          lifetimeCashEarned: s.stats.lifetimeCashEarned,
+          crewCounts: s.crewCounts,
+          totalCrew: s.crew.length,
+          territoriesOwned: s.neighborhoods.filter(n => n.owned).length,
+          allTerritoriesOwned: s.neighborhoods.every(n => n.owned),
+          highestHeat: s.stats.highestHeat,
+          raidsSurvived: s.stats.raidsSurvived,
+          prestigeCount: s.prestigeCount,
+          upgradesPurchased: s.upgrades.filter(u => u.purchased).length,
+          cashPerSec: 0,
+        });
       },
 
       useFavor: (favorType: FavorType) => {
@@ -476,7 +733,6 @@ export const useGameStore = create<GameStore>()(
         const lastUsed = state.favorCooldowns[favorType];
         if (lastUsed && now - lastUsed < favor.cooldown) return;
 
-        // Apply favor effect
         const newState: Partial<GameState> = {
           favorCooldowns: {
             ...state.favorCooldowns,
@@ -495,7 +751,6 @@ export const useGameStore = create<GameStore>()(
             heat: state.resources.heat * 0.75,
           };
         } else if (favorType === 'the_shipment') {
-          // 5 minutes of income
           const cashBonus = calculateTotalIncome(state) * 300;
           newState.resources = {
             ...state.resources,
@@ -524,7 +779,9 @@ export const useGameStore = create<GameStore>()(
         const member = state.crew.find(c => c.id === crewId);
         if (!member || !member.isPinched) return;
 
-        const bailCost = getBailCost(member.rank);
+        const bailReduction = state.prestigeUpgrades.find(u => u.id === 'iron_will' && u.purchased)?.effect.bailCostReduction ?? 1;
+        const bailCost = Math.floor(getBailCost(member.rank) * bailReduction);
+
         if (state.resources.cash < bailCost) {
           get().addNotification('Not enough cash to post bail.', 'warning');
           return;
@@ -544,7 +801,9 @@ export const useGameStore = create<GameStore>()(
         const pinchedMembers = state.crew.filter(c => c.isPinched);
         if (pinchedMembers.length === 0) return;
 
-        const totalCost = pinchedMembers.reduce((sum, m) => sum + getBailCost(m.rank), 0);
+        const bailReduction = state.prestigeUpgrades.find(u => u.id === 'iron_will' && u.purchased)?.effect.bailCostReduction ?? 1;
+        const totalCost = pinchedMembers.reduce((sum, m) => sum + Math.floor(getBailCost(m.rank) * bailReduction), 0);
+
         if (state.resources.cash < totalCost) {
           get().addNotification(`Not enough cash to bail everyone out. Need ${formatCash(totalCost)}.`, 'warning');
           return;
@@ -573,7 +832,7 @@ export const useGameStore = create<GameStore>()(
         get().addNotification('⚖️ The gavel falls. You\'re going inside. Time to do your time...', 'warning');
         set({
           isFalling: true,
-          fallTimer: 10 * 1000, // 10 second wait (shortened for gameplay)
+          fallTimer: 10 * 1000,
         });
       },
 
@@ -596,6 +855,90 @@ export const useGameStore = create<GameStore>()(
 
       dismissRaid: () => {
         set({ raidWarningActive: false, raidTimer: undefined });
+      },
+
+      resetGame: () => {
+        set({
+          ...INITIAL_STATE,
+          neighborhoods: INITIAL_NEIGHBORHOODS.map(n => ({ ...n, rackets: n.rackets.map(r => ({ ...r })) })),
+          upgrades: UPGRADES.map(u => ({ ...u })),
+          objectives: OBJECTIVES.map(o => ({ ...o })),
+          prestigeUpgrades: PRESTIGE_UPGRADES.map(u => ({ ...u })),
+          lastTick: Date.now(),
+        });
+      },
+
+      claimObjective: (id: string) => {
+        const state = get();
+        const objective = state.objectives.find(o => o.id === id);
+        if (!objective || !objective.completed || objective.claimed) return;
+
+        const rewardParts: string[] = [];
+        const resourceUpdates: Partial<typeof state.resources> = {};
+        if (objective.reward.cash) {
+          resourceUpdates.cash = (state.resources.cash + objective.reward.cash);
+          rewardParts.push(formatCash(objective.reward.cash));
+        }
+        if (objective.reward.respect) {
+          resourceUpdates.respect = (state.resources.respect + objective.reward.respect);
+          rewardParts.push(`${objective.reward.respect} respect`);
+        }
+        if (objective.reward.loyalty) {
+          resourceUpdates.loyalty = Math.min(200, state.resources.loyalty + objective.reward.loyalty);
+          rewardParts.push(`${objective.reward.loyalty} loyalty`);
+        }
+
+        set(s => ({
+          objectives: s.objectives.map(o => o.id === id ? { ...o, claimed: true } : o),
+          resources: { ...s.resources, ...resourceUpdates },
+        }));
+        get().addNotification(`Claimed "${objective.title}": +${rewardParts.join(', ')}`, 'success');
+
+        // Check if "The Seat" prestige upgrade is now unlockable (requires commission objective)
+        if (id === 'the_commission') {
+          const s = get();
+          const theSeat = s.prestigeUpgrades.find(u => u.id === 'the_seat');
+          if (theSeat && !theSeat.purchased) {
+            set(ps => ({
+              prestigeUpgrades: ps.prestigeUpgrades.map(u =>
+                u.id === 'the_seat' ? { ...u, requires: undefined } : u
+              ),
+            }));
+            get().addNotification('A Seat at the Table is now available in Prestige Upgrades.', 'info');
+          }
+        }
+      },
+
+      purchasePrestigeUpgrade: (id: string) => {
+        const state = get();
+        const upgrade = state.prestigeUpgrades.find(u => u.id === id);
+        if (!upgrade || upgrade.purchased) return;
+
+        // 'the_seat' requires the_commission objective to be claimed
+        if (upgrade.requires === 'the_commission_obj') {
+          const commissionClaimed = state.objectives.find(o => o.id === 'the_commission')?.claimed;
+          if (!commissionClaimed) {
+            get().addNotification('Complete and claim "The Commission" objective first.', 'warning');
+            return;
+          }
+        } else if (upgrade.requires) {
+          const required = state.prestigeUpgrades.find(u => u.id === upgrade.requires);
+          if (!required?.purchased) {
+            get().addNotification(`You need "${required?.name}" first.`, 'warning');
+            return;
+          }
+        }
+
+        if (state.resources.respect < upgrade.respectCost) {
+          get().addNotification(`Not enough respect. Need ${upgrade.respectCost} respect.`, 'warning');
+          return;
+        }
+
+        set(s => ({
+          prestigeUpgrades: s.prestigeUpgrades.map(u => u.id === id ? { ...u, purchased: true } : u),
+          resources: { ...s.resources, respect: s.resources.respect - upgrade.respectCost },
+        }));
+        get().addNotification(`"${upgrade.name}" permanently unlocked.`, 'success');
       },
     }),
     {

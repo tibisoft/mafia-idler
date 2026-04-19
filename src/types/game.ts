@@ -8,14 +8,14 @@ export interface Resources {
   dirt: number;
 }
 
-export type CrewRank = 
-  | 'street_kid' 
-  | 'runner' 
-  | 'enforcer' 
-  | 'soldier' 
-  | 'capo' 
-  | 'underboss' 
-  | 'consigliere' 
+export type CrewRank =
+  | 'street_kid'
+  | 'runner'
+  | 'enforcer'
+  | 'soldier'
+  | 'capo'
+  | 'underboss'
+  | 'consigliere'
   | 'don';
 
 export interface CrewMemberTemplate {
@@ -41,11 +41,11 @@ export interface CrewMember {
   pinchedUntil?: number;
 }
 
-export type RacketType = 
-  | 'numbers_running' 
-  | 'loan_sharking' 
-  | 'protection' 
-  | 'smuggling' 
+export type RacketType =
+  | 'numbers_running'
+  | 'loan_sharking'
+  | 'protection'
+  | 'smuggling'
   | 'gambling_den';
 
 export interface Racket {
@@ -80,12 +80,12 @@ export interface Upgrade {
   requires?: string;
 }
 
-export type FavorType = 
-  | 'the_tip' 
-  | 'the_bailout' 
-  | 'the_bribe' 
-  | 'the_shipment' 
-  | 'the_inside_man' 
+export type FavorType =
+  | 'the_tip'
+  | 'the_bailout'
+  | 'the_bribe'
+  | 'the_shipment'
+  | 'the_inside_man'
   | 'go_to_mattresses';
 
 export interface Favor {
@@ -107,6 +107,62 @@ export interface Notification {
   type: 'info' | 'warning' | 'danger' | 'success';
 }
 
+// Objective requirement types — what must be true for the objective to complete
+export type ObjectiveRequirement =
+  | { type: 'cashEarned'; amount: number }
+  | { type: 'lifetimeCash'; amount: number }
+  | { type: 'crewRankHired'; rank: CrewRank }
+  | { type: 'totalCrew'; count: number }
+  | { type: 'territoriesOwned'; count: number }
+  | { type: 'allTerritoriesOwned' }
+  | { type: 'heatReached'; heat: number }
+  | { type: 'raidsSurvived'; count: number }
+  | { type: 'prestigeCount'; count: number }
+  | { type: 'upgradesPurchased'; count: number }
+  | { type: 'cashPerSec'; amount: number }
+  | { type: 'compound'; all: ObjectiveRequirement[] };
+
+export interface Objective {
+  id: string;
+  title: string;
+  description: string;
+  flavour: string;
+  tier: 1 | 2 | 3;
+  reward: { cash?: number; respect?: number; loyalty?: number };
+  requirement: ObjectiveRequirement;
+  completed: boolean;
+  claimed: boolean;
+}
+
+export interface PrestigeUpgrade {
+  id: string;
+  name: string;
+  description: string;
+  respectCost: number;
+  purchased: boolean;
+  requires?: string;
+  effect: {
+    startingCashMultiplier?: number;
+    globalCashMultiplier?: number;
+    heatDecayBonus?: number;
+    bailCostReduction?: number;
+    crewIncomeBonus?: number;
+  };
+}
+
+export interface RetaliationEvent {
+  neighborhoodId: string;
+  rivalFamily: string;
+  executeAt: number;
+  type: 'message_sent' | 'shakedown' | 'heat_up' | 'full_retaliation';
+}
+
+export interface GameStats {
+  lifetimeCashEarned: number;
+  raidsSurvived: number;
+  highestHeat: number;
+}
+
 export interface GameState {
   resources: Resources;
   crew: CrewMember[];
@@ -126,4 +182,8 @@ export interface GameState {
   totalCashEarned: number;
   raidTimer?: number;
   raidWarningActive: boolean;
+  objectives: Objective[];
+  prestigeUpgrades: PrestigeUpgrade[];
+  pendingRetaliations: RetaliationEvent[];
+  stats: GameStats;
 }
