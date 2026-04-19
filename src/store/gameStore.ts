@@ -312,7 +312,7 @@ export const useGameStore = create<GameStore>()(
 
         const offlineEarningsRate = isOffline ? OFFLINE_EARNINGS_RATE : 1;
         const newCash = Math.max(0, state.resources.cash + cashIncome * effectiveDeltaS * offlineEarningsRate);
-        const newLoyalty = Math.min(200, state.resources.loyalty + loyaltyIncome * effectiveDeltaS * offlineEarningsRate);
+        const newLoyalty = Math.min(500, state.resources.loyalty + loyaltyIncome * effectiveDeltaS * offlineEarningsRate);
         const newRespect = state.resources.respect + respectIncome * effectiveDeltaS * offlineEarningsRate;
         const newDirt = Math.min(50, state.resources.dirt + 0.001 * effectiveDeltaS);
 
@@ -930,7 +930,7 @@ export const useGameStore = create<GameStore>()(
           rewardParts.push(`${objective.reward.respect} respect`);
         }
         if (objective.reward.loyalty) {
-          resourceUpdates.loyalty = Math.min(200, state.resources.loyalty + objective.reward.loyalty);
+          resourceUpdates.loyalty = Math.min(500, state.resources.loyalty + objective.reward.loyalty);
           rewardParts.push(`${objective.reward.loyalty} loyalty`);
         }
 
