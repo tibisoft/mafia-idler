@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { GameState, CrewRank, FavorType, Tab, Notification, ObjectiveRequirement } from '../types/game';
+import type { GameState, CrewRank, CrewMember, Neighborhood, FavorType, Tab, Notification, ObjectiveRequirement } from '../types/game';
 import { CREW_TEMPLATES, INITIAL_NEIGHBORHOODS, UPGRADES, FAVORS, OBJECTIVES, PRESTIGE_UPGRADES, generateCrewName, FALL_HEAT_THRESHOLD, FALL_MIN_CASH_EARNED, getBailCost } from '../data/gameData';
 import { formatCash, formatTime } from '../utils/format';
 
@@ -19,6 +19,57 @@ const RETALIATION_TYPES: Record<string, 'message_sent' | 'shakedown' | 'heat_up'
 };
 
 export { getBailCost } from '../data/gameData';
+
+/**
+ * Returns the fraction (0–1) of racket income to apply, based on how well the
+ * player's active (non-pinched) crew covers each rank required across all owned
+ * rackets.
+ *
+ * For each required crew rank the coverage ratio is:
+ *   min(1, activeOfRank / totalRequiredAcrossAllOwnedRackets)
+ *
+ * The overall efficiency is the average of all per-rank coverage ratios.
+ * A rank that has never been hired (totalCount === 0) is treated as fully
+ * covered so early-game players aren't penalised before they've invested.
+ */
+export function calculateRacketEfficiency(
+  crewCounts: Record<CrewRank, number>,
+  crew: CrewMember[],
+  neighborhoods: Neighborhood[],
+): number {
+  // Sum up crew requirements across all owned rackets
+  const totalRequired: Partial<Record<CrewRank, number>> = {};
+  for (const n of neighborhoods) {
+    if (!n.owned) continue;
+    for (const r of n.rackets) {
+      for (const [rank, count] of Object.entries(r.crewRequired) as [CrewRank, number][]) {
+        totalRequired[rank] = (totalRequired[rank] ?? 0) + count;
+      }
+    }
+  }
+
+  const requiredRanks = Object.keys(totalRequired) as CrewRank[];
+  if (requiredRanks.length === 0) return 1;
+
+  let totalRatio = 0;
+  let ratioCount = 0;
+
+  for (const rank of requiredRanks) {
+    const required = totalRequired[rank] ?? 0;
+    if (required === 0) continue;
+    const hired = crewCounts[rank] || 0;
+    // Grace period: if this rank has never been hired, count it as fully covered.
+    if (hired === 0) {
+      totalRatio += 1;
+    } else {
+      const active = Math.max(0, hired - crew.filter(c => c.rank === rank && c.isPinched).length);
+      totalRatio += Math.min(1, active / required);
+    }
+    ratioCount++;
+  }
+
+  return ratioCount === 0 ? 1 : totalRatio / ratioCount;
+}
 
 const INITIAL_STATE: GameState = {
   resources: {
@@ -222,11 +273,13 @@ export const useGameStore = create<GameStore>()(
           respectIncome += template.respectPerSecond * activeCrew;
         }
 
-        // Income from rackets (owned neighborhoods)
+        // Income from rackets (owned neighborhoods), scaled by street kid availability
+        const racketEfficiency = calculateRacketEfficiency(crewCounts, state.crew, state.neighborhoods);
+
         for (const neighborhood of state.neighborhoods) {
           if (!neighborhood.owned) continue;
           for (const racket of neighborhood.rackets) {
-            cashIncome += racket.cashPerSecond * racket.level;
+            cashIncome += racket.cashPerSecond * racket.level * racketEfficiency;
             heatIncome += racket.heatPerSecond * racket.level;
             loyaltyIncome += racket.loyaltyPerSecond * racket.level;
           }
@@ -958,10 +1011,11 @@ function calculateTotalIncome(state: GameState): number {
     if (activeCrew <= 0) continue;
     cashIncome += template.cashPerSecond * activeCrew;
   }
+  const racketEfficiency = calculateRacketEfficiency(state.crewCounts, state.crew, state.neighborhoods);
   for (const neighborhood of state.neighborhoods) {
     if (!neighborhood.owned) continue;
     for (const racket of neighborhood.rackets) {
-      cashIncome += racket.cashPerSecond * racket.level;
+      cashIncome += racket.cashPerSecond * racket.level * racketEfficiency;
     }
   }
   return cashIncome * state.prestigeMultiplier;

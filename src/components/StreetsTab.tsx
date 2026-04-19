@@ -1,16 +1,65 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { useGameStore } from '../store/gameStore';
+import { useGameStore, calculateRacketEfficiency } from '../store/gameStore';
+import { CREW_TEMPLATES } from '../data/gameData';
+import type { CrewRank } from '../types/game';
 import { formatCash } from '../utils/format';
 import { Colors } from '../theme/colors';
 
+// Map rank → display title (derived from static CREW_TEMPLATES)
+const RANK_TITLE: Record<CrewRank, string> = Object.fromEntries(
+  CREW_TEMPLATES.map(t => [t.rank, t.title])
+) as Record<CrewRank, string>;
+
 export function StreetsTab() {
-  const { neighborhoods, resources, acquireTerritory, upgradeRacket } = useGameStore();
+  const { neighborhoods, resources, crewCounts, crew, acquireTerritory, upgradeRacket } = useGameStore();
+
+  const racketEfficiency = calculateRacketEfficiency(crewCounts, crew, neighborhoods);
+  const efficiencyPct = Math.round(racketEfficiency * 100);
+
+  // Build per-rank coverage summary for the banner
+  const totalRequired: Partial<Record<CrewRank, number>> = {};
+  for (const n of neighborhoods) {
+    if (!n.owned) continue;
+    for (const r of n.rackets) {
+      for (const [rank, count] of Object.entries(r.crewRequired) as [CrewRank, number][]) {
+        totalRequired[rank] = (totalRequired[rank] ?? 0) + count;
+      }
+    }
+  }
+  const hasRequirements = Object.keys(totalRequired).length > 0;
+
+  // Ranks that are below full coverage and have been invested in
+  const shortfallLines = (Object.entries(totalRequired) as [CrewRank, number][])
+    .filter(([rank, required]) => {
+      const hired = crewCounts[rank] || 0;
+      if (hired === 0) return false; // grace period
+      const active = Math.max(0, hired - crew.filter(c => c.rank === rank && c.isPinched).length);
+      return active < required;
+    })
+    .map(([rank, required]) => {
+      const hired = crewCounts[rank] || 0;
+      const active = Math.max(0, hired - crew.filter(c => c.rank === rank && c.isPinched).length);
+      return `${RANK_TITLE[rank]}: ${active}/${required}`;
+    });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>The Streets</Text>
       <Text style={styles.subtitle}>Your territory across the city</Text>
+
+      {hasRequirements && (
+        <View style={[styles.efficiencyBanner, racketEfficiency < 1 ? styles.efficiencyBannerWarn : styles.efficiencyBannerOk]}>
+          <Text style={styles.efficiencyLabel}>
+            Racket efficiency: {efficiencyPct}%
+          </Text>
+          {shortfallLines.length > 0 && (
+            <Text style={styles.efficiencyShortfall}>
+              ⚠ Short-handed: {shortfallLines.join(' · ')}
+            </Text>
+          )}
+        </View>
+      )}
 
       {neighborhoods.map(neighborhood => (
         <View
@@ -52,35 +101,43 @@ export function StreetsTab() {
 
           {neighborhood.owned && (
             <View style={styles.rackets}>
-              {neighborhood.rackets.map(racket => (
-                <View key={racket.type} style={styles.racketRow}>
-                  <View style={styles.racketInfo}>
-                    <Text style={styles.racketName}>{racket.name}</Text>
-                    <Text style={styles.racketStats}>
-                      Lvl {racket.level} · {formatCash(racket.cashPerSecond * racket.level)}/s · 🌡+{(racket.heatPerSecond * racket.level).toFixed(3)}/s
-                    </Text>
+              {neighborhood.rackets.map(racket => {
+                const crewLine = (Object.entries(racket.crewRequired) as [CrewRank, number][])
+                  .map(([rank, count]) => `${count}× ${RANK_TITLE[rank]}`)
+                  .join(', ');
+                return (
+                  <View key={racket.type} style={styles.racketRow}>
+                    <View style={styles.racketInfo}>
+                      <Text style={styles.racketName}>{racket.name}</Text>
+                      <Text style={styles.racketStats}>
+                        Lvl {racket.level} · {formatCash(racket.cashPerSecond * racket.level)}/s · 🌡+{(racket.heatPerSecond * racket.level).toFixed(3)}/s
+                      </Text>
+                      <Text style={styles.racketCrew}>
+                        👥 Needs: {crewLine}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => upgradeRacket(neighborhood.id, racket.type)}
+                      disabled={resources.cash < racket.upgradeCost}
+                      style={[
+                        styles.upgradeBtn,
+                        resources.cash >= racket.upgradeCost
+                          ? styles.upgradeBtnEnabled
+                          : styles.upgradeBtnDisabled,
+                      ]}
+                    >
+                      <Text style={[
+                        styles.upgradeBtnText,
+                        resources.cash >= racket.upgradeCost
+                          ? styles.upgradeBtnTextEnabled
+                          : styles.upgradeBtnTextDisabled,
+                      ]}>
+                        ↑ {formatCash(racket.upgradeCost)}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity
-                    onPress={() => upgradeRacket(neighborhood.id, racket.type)}
-                    disabled={resources.cash < racket.upgradeCost}
-                    style={[
-                      styles.upgradeBtn,
-                      resources.cash >= racket.upgradeCost
-                        ? styles.upgradeBtnEnabled
-                        : styles.upgradeBtnDisabled,
-                    ]}
-                  >
-                    <Text style={[
-                      styles.upgradeBtnText,
-                      resources.cash >= racket.upgradeCost
-                        ? styles.upgradeBtnTextEnabled
-                        : styles.upgradeBtnTextDisabled,
-                    ]}>
-                      ↑ {formatCash(racket.upgradeCost)}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
         </View>
@@ -199,6 +256,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginTop: 2,
   },
+  racketCrew: {
+    color: Colors.muted,
+    fontSize: 10,
+    marginTop: 2,
+  },
   upgradeBtn: {
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -222,5 +284,31 @@ const styles = StyleSheet.create({
   },
   upgradeBtnTextDisabled: {
     color: Colors.muted,
+  },
+  efficiencyBanner: {
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 4,
+    borderWidth: 1,
+  },
+  efficiencyBannerOk: {
+    backgroundColor: Colors.gold + '1a',
+    borderColor: Colors.gold + '4d',
+  },
+  efficiencyBannerWarn: {
+    backgroundColor: '#8b1a1a33',
+    borderColor: '#cc222266',
+  },
+  efficiencyLabel: {
+    color: Colors.text,
+    fontSize: 11,
+    fontFamily: 'monospace',
+  },
+  efficiencyShortfall: {
+    color: '#cc4444',
+    fontSize: 10,
+    fontFamily: 'monospace',
+    marginTop: 3,
   },
 });

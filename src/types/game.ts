@@ -56,6 +56,8 @@ export interface Racket {
   heatPerSecond: number;
   loyaltyPerSecond: number;
   upgradeCost: number;
+  /** Crew types (and counts) needed to run this racket at full efficiency. */
+  crewRequired: Partial<Record<CrewRank, number>>;
 }
 
 export interface Neighborhood {
