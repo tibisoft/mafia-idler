@@ -89,7 +89,7 @@ Five neighborhoods, one owned at start. Acquiring a territory costs a one-time t
 > `per-rank coverage = clamp(activeOfRank / totalRequiredOfRank, 0, 1)`
 > `racket efficiency = average of all per-rank coverages`
 
-A crew rank that has never been hired defaults to full coverage (early-game grace period). Once a rank is invested in, a raid that pins all of them reduces its coverage to 0, pulling overall efficiency down proportionally — directly linking family size to street income and making "The Fall" a more attractive exit.
+A crew rank with zero active members contributes 0 to coverage, pulling overall efficiency down proportionally — directly linking family size to street income and making "The Fall" a more attractive exit.
 
 ---
 

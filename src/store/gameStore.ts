@@ -29,8 +29,6 @@ export { getBailCost } from '../data/gameData';
  *   min(1, activeOfRank / totalRequiredAcrossAllOwnedRackets)
  *
  * The overall efficiency is the average of all per-rank coverage ratios.
- * A rank that has never been hired (totalCount === 0) is treated as fully
- * covered so early-game players aren't penalised before they've invested.
  */
 export function calculateRacketEfficiency(
   crewCounts: Record<CrewRank, number>,
@@ -58,13 +56,8 @@ export function calculateRacketEfficiency(
     const required = totalRequired[rank] ?? 0;
     if (required === 0) continue;
     const hired = crewCounts[rank] || 0;
-    // Grace period: if this rank has never been hired, count it as fully covered.
-    if (hired === 0) {
-      totalRatio += 1;
-    } else {
-      const active = Math.max(0, hired - crew.filter(c => c.rank === rank && c.isPinched).length);
-      totalRatio += Math.min(1, active / required);
-    }
+    const active = Math.max(0, hired - crew.filter(c => c.rank === rank && c.isPinched).length);
+    totalRatio += Math.min(1, active / required);
     ratioCount++;
   }
 
