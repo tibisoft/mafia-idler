@@ -74,21 +74,22 @@ Five neighborhoods, one owned at start. Acquiring a territory costs a one-time t
 
 **Racket multipliers by type:**
 
-| Type | Cash mult | Heat mult | Loyalty mult | Street Kids required |
-|------|-----------|----------|-------------|---------------------|
-| Numbers Running | 1.0× | 0.5× | 0.3× | 2 |
-| Loan Sharking | 1.5× | 0.8× | 1.2× | 3 |
-| Protection | 1.2× | 0.7× | 0.8× | 2 |
-| Smuggling | 2.0× | 1.5× | 0.5× | 4 |
-| Gambling Den | 1.8× | 1.2× | 0.7× | 3 |
+| Type | Cash mult | Heat mult | Loyalty mult | Crew required |
+|------|-----------|----------|-------------|--------------|
+| Numbers Running | 1.0× | 0.5× | 0.3× | 2× Street Kid |
+| Loan Sharking | 1.5× | 0.8× | 1.2× | 2× Street Kid, 1× Enforcer |
+| Protection | 1.2× | 0.7× | 0.8× | 1× Runner, 1× Enforcer |
+| Smuggling | 2.0× | 1.5× | 0.5× | 2× Runner, 1× Soldier |
+| Gambling Den | 1.8× | 1.2× | 0.7× | 2× Street Kid, 1× Runner, 1× Capo |
 
 **Racket upgrades:** Each level costs 2.5× more than the last. Income grows 1.5×, heat 1.3×, loyalty 1.4× per level.
 
-**Street Kid dependency:** Each racket requires a fixed number of Street Kids to run at full capacity. Racket cash income is scaled by the ratio of currently-active (non-pinched) Street Kids to the total required across all owned rackets:
+**Family crew dependency:** Each racket requires a specific mix of crew ranks to run at full capacity. The overall racket efficiency is the average of per-rank coverage ratios across all owned rackets:
 
-> `racket efficiency = clamp(activeStreetKids / totalRequired, 0, 1)`
+> `per-rank coverage = clamp(activeOfRank / totalRequiredOfRank, 0, 1)`
+> `racket efficiency = average of all per-rank coverages`
 
-If no Street Kids have ever been hired the efficiency defaults to 1 (rackets run independently). Once Street Kids are invested in, a raid that pins all of them will drop racket income to zero — making "The Fall" a more attractive exit.
+A crew rank that has never been hired defaults to full coverage (early-game grace period). Once a rank is invested in, a raid that pins all of them reduces its coverage to 0, pulling overall efficiency down proportionally — directly linking family size to street income and making "The Fall" a more attractive exit.
 
 ---
 

@@ -21,23 +21,54 @@ const RETALIATION_TYPES: Record<string, 'message_sent' | 'shakedown' | 'heat_up'
 export { getBailCost } from '../data/gameData';
 
 /**
- * Returns the fraction (0–1) of racket income that should be applied based on
- * how many Street Kids are currently active vs. how many all owned rackets need.
- * Defaults to 1 when no Street Kids have been hired yet (no investment in the mechanic).
+ * Returns the fraction (0–1) of racket income to apply, based on how well the
+ * player's active (non-pinched) crew covers each rank required across all owned
+ * rackets.
+ *
+ * For each required crew rank the coverage ratio is:
+ *   min(1, activeOfRank / totalRequiredAcrossAllOwnedRackets)
+ *
+ * The overall efficiency is the average of all per-rank coverage ratios.
+ * A rank that has never been hired (totalCount === 0) is treated as fully
+ * covered so early-game players aren't penalised before they've invested.
  */
 export function calculateRacketEfficiency(
   crewCounts: Record<CrewRank, number>,
   crew: CrewMember[],
   neighborhoods: Neighborhood[],
 ): number {
-  const totalStreetKids = crewCounts.street_kid || 0;
-  if (totalStreetKids === 0) return 1;
-  const activeStreetKids = Math.max(0, totalStreetKids - crew.filter(c => c.rank === 'street_kid' && c.isPinched).length);
-  const totalStreetKidsRequired = neighborhoods
-    .filter(n => n.owned)
-    .reduce((sum, n) => sum + n.rackets.reduce((s, r) => s + r.streetKidsRequired, 0), 0);
-  if (totalStreetKidsRequired === 0) return 1;
-  return Math.min(1, Math.max(0, activeStreetKids / totalStreetKidsRequired));
+  // Sum up crew requirements across all owned rackets
+  const totalRequired: Partial<Record<CrewRank, number>> = {};
+  for (const n of neighborhoods) {
+    if (!n.owned) continue;
+    for (const r of n.rackets) {
+      for (const [rank, count] of Object.entries(r.crewRequired) as [CrewRank, number][]) {
+        totalRequired[rank] = (totalRequired[rank] ?? 0) + count;
+      }
+    }
+  }
+
+  const requiredRanks = Object.keys(totalRequired) as CrewRank[];
+  if (requiredRanks.length === 0) return 1;
+
+  let totalRatio = 0;
+  let ratioCount = 0;
+
+  for (const rank of requiredRanks) {
+    const required = totalRequired[rank] ?? 0;
+    if (required === 0) continue;
+    const hired = crewCounts[rank] || 0;
+    // Grace period: if this rank has never been hired, count it as fully covered.
+    if (hired === 0) {
+      totalRatio += 1;
+    } else {
+      const active = Math.max(0, hired - crew.filter(c => c.rank === rank && c.isPinched).length);
+      totalRatio += Math.min(1, active / required);
+    }
+    ratioCount++;
+  }
+
+  return ratioCount === 0 ? 1 : totalRatio / ratioCount;
 }
 
 const INITIAL_STATE: GameState = {
